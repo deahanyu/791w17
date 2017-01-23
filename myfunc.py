@@ -6,124 +6,125 @@ import re
 ########################################################################
 ########################################################################
 
-def adjustObj(ss):
-	#Object = each row
-	#if there is space in a given column(field), we want to replace it without space 
-	#so that we can parse it with spaces later
-    #this function does removing Multiple Spaces And replace any comma with a space 
-    #because we will be make CSV file at the end.
-    r = re.split(r'\s{2,}',ss)
-    if r[0]=='':
-        del r[0]
-    if r[-1]=='':
-    	del r[-1]
-    return [i.replace(',',' ') for i in r]
+def columnInformation(csvFileFullName):
+	#Getting each column's information from csvFileFullName
+	with open(csvFileFullName,'r') as fl:
+		#fl.readlines() or .read() gives one big string, so we are going to seperate by '\n'
+		of=fl.read().splitlines()[2:69] #first 2 lines are unnecessary and we only need upto line 69.
+	z=[re.search(r'[0-9].*[0-9],',i).group().split(',')[:-1] for i in of]
+	z=zip(*z)
+	#z[0] is column number
+	#z[1] is headers
+	#z[-1] is amount space that each column has.
+	return [int(i) for i in z[-1]]
 
+def checkingRecords(k,col,dd):
+	#imput: k = each file's unique name, col=column number, dd=dictionary
+	with open('UMich'+k+'.csv') as dk:
+		for i in dk.readlines()[1:]:
+			if i.split(',')[col].lower() in dd:
+				dd[i.split(',')[col].lower()]+=1
+			else:
+				dd[i.split(',')[col].lower()]=1
+	return dd
+
+def forRecorderOrTaxAssessorCSV(rrr,www,eachColumnSpace):
+	#rrr is file to read, www is a list of file names (3), eachcolumnspace is each column information 
+	with open(rrr,'r') as rc:
+		totalNumberOfRows=len(rc.readlines())
+	remainder=totalNumberOfRows%3
+	totalNum=totalNumberOfRows-remainder
+	oneChunk=totalNum/3
+	splitFiles=[oneChunk,2*oneChunk]#we only need to check 2 points to split them into 3 parts
+
+	with open(rrr,'r') as rc:
+		with open('UMich'+www[0]+'.csv','w') as wo:
+			wo.write(','.join(z[1])+'\n')
+			for i in rc.readlines()[0:splitFiles[0]]:
+				eachList=[]
+				for j in eachColumnSpace:
+					eachList.append(i[:j])
+					i = i[j:]
+				#Last element of eachList is '\r\n'
+				eachList=eachList[:-1]
+				#We want to grab only data only or empty variable
+				eachList=[re.search(r'([^\s].*[^\s]|[^\s])|[ ]+', i).group() for i in eachList]
+				#For empty variables, we are replacing spaces with '' none. 
+				for i in range(len(eachList)):
+					if re.search(r'^\s+', eachList[i]):
+						eachList[i]=eachList[i].replace(' ','')
+				#Replacing commas with '' none. 
+				eachList=[i.replace(',','') for i in eachList]
+				wo.write(",".join(eachList)+'\n')
+
+	with open(rrr,'r') as rc:
+		with open('UMich'+www[1]+'.csv','w') as wo:
+			wo.write(','.join(z[1])+'\n')
+			for i in rc.readlines()[splitFiles[0]:splitFiles[1]]:
+				eachList=[]
+				for j in eachColumnSpace:
+					eachList.append(i[:j])
+					i = i[j:]
+				#Last element of eachList is '\r\n'
+				eachList=eachList[:-1]
+				#We want to grab only data only or empty variable
+				eachList=[re.search(r'([^\s].*[^\s]|[^\s])|[ ]+', i).group() for i in eachList]
+				#For empty variables, we are replacing spaces with '' none. 
+				for i in range(len(eachList)):
+					if re.search(r'^\s+', eachList[i]):
+						eachList[i]=eachList[i].replace(' ','')
+				#Replacing commas with '' none. 
+				eachList=[i.replace(',','') for i in eachList]
+				wo.write(",".join(eachList)+'\n')
+
+	with open(rrr,'r') as rc:
+		with open('UMich'+www[2]+'.csv','w') as wo:
+			wo.write(','.join(z[1])+'\n')
+			for i in rc.readlines()[splitFiles[1]:]:
+				eachList=[]
+				for j in eachColumnSpace:
+					eachList.append(i[:j])
+					i = i[j:]
+				#Last element of eachList is '\r\n'
+				eachList=eachList[:-1]
+				#We want to grab only data only or empty variable
+				eachList=[re.search(r'([^\s].*[^\s]|[^\s])|[ ]+', i).group() for i in eachList]
+				#For empty variables, we are replacing spaces with '' none. 
+				for i in range(len(eachList)):
+					if re.search(r'^\s+', eachList[i]):
+						eachList[i]=eachList[i].replace(' ','')
+				#Replacing commas with '' none. 
+				eachList=[i.replace(',','') for i in eachList]
+				wo.write(",".join(eachList)+'\n')
+	return "Done"
 
 ########################################################################
 ########################################################################
-#####################      Forclosure Only      ########################
+#####################      Foreclosure Only      ########################
 ########################################################################
 ########################################################################
-def adjustForeclosureObj(ss):
-	#if there is space in a given column(field), we want to replace it without space so that we can parse it with spaces later
-    #this function does removing Multiple Spaces And Commas and seperates. . .
-    r = re.split(r'\s{2,}',ss)
-    #re.split(r'\s{2,}',ss) this function sometimes can have '' at the begining or end 
-    #so we want to delete it 
-    if r[0]=='':
-        del r[0]
-    if r[-1]=='':
-    	del r[-1]
-    #From the initial data set, I figured 
-    if re.search(r'[0-9.]+ [a-zA-z]+',r[8]):
-        firstName=re.search(r'[a-zA-z]+',r[8]).group()
-        inds=len(firstName)+1
-        r[8]=r[8][:-6]
-        r=r[:9]+[firstName]+r[9:]
-
-    return [i.replace(',',' ') for i in r]
-
-def foreclosureStandardizeObj(objList):
-	#Basically I eyeballed and checked differences betweeen 15 columns to 16 columns
-	#Then, I was able to 
-	#each object has different number of fields so we need to equalize the number of fields
-	a = objList
-	if len(a)==22:
-		a=a[:17]+['','']+a[17:]#**24
-		a=a[:19]+['']+a[19:]#25
-		a=a[:20]+['','']+a[20:]#**27
-	elif len(a)==25:
-		a=a[:12]+['']+a[12:]#26
-		a=a+['']#27
-	elif len(a)==15:
-		a=a+['']#16
-		a=a[:9]+['']+a[9:]#17
-		a=a[:13]+['']+a[13:]#18
-		a=a[:8]+['']+a[8:]#19
-		a=a[:11]+['']+a[11:]#20
-		a=a[:12]+['']+a[12:]#21
-		a=a[:17]+['','']+a[17:]#**23
-		a=a[:19]+['']+a[19:]#24
-		a=a[:20]+['','']+a[20:]#26
-		a=a+['']#27
-	elif len(a)==16:
-		a=a[:9]+['']+a[9:]#17
-		a=a[:13]+['']+a[13:]#18
-		a=a[:8]+['']+a[8:]#19
-		a=a[:11]+['']+a[11:]#20
-		a=a[:12]+['']+a[12:]#21
-		a=a[:17]+['','']+a[17:]#**23
-		a=a[:19]+['']+a[19:]#24
-		a=a[:20]+['','']+a[20:]#26
-		a=a+['']#27
-	elif len(a)==17:
-		a=a[:13]+['']+a[13:]#18
-		a=a[:8]+['']+a[8:]#19
-		a=a[:11]+['']+a[11:]#20
-		a=a[:12]+['']+a[12:]#21
-		a=a[:17]+['','']+a[17:]#**23
-		a=a[:19]+['']+a[19:]#24
-		a=a[:20]+['','']+a[20:]#26
-		a=a+['']#27
-	elif len(a)==18:
-		a=a[:8]+['']+a[8:]#19
-		a=a[:11]+['']+a[11:]#20
-		a=a[:12]+['']+a[12:]#21
-		a=a[:17]+['','']+a[17:]#**23
-		a=a[:19]+['']+a[19:]#24
-		a=a[:20]+['','']+a[20:]#26
-		a=a+['']#27
-	elif len(a)==19:
-		a=a[:11]+['']+a[11:]#20
-		a=a[:12]+['']+a[12:]#21
-		a=a[:17]+['','']+a[17:]#**23
-		a=a[:19]+['']+a[19:]#24
-		a=a[:20]+['','']+a[20:]#26
-		a=a+['']#27
-	elif len(a)==20:
-		a=a[:12]+['']+a[12:]#21
-		a=a[:17]+['','']+a[17:]#**23
-		a=a[:19]+['']+a[19:]#24
-		a=a[:20]+['','']+a[20:]#26
-		a=a+['']#27
-	elif len(a)==21:
-		a=a[:17]+['','']+a[17:]#**23
-		a=a[:19]+['']+a[19:]#24
-		a=a[:20]+['','']+a[20:]#26
-		a=a+['']#27
-	elif len(a)==23:
-		a=a[:19]+['']+a[19:]#24
-		a=a[:20]+['','']+a[20:]#26
-		a=a+['']#27
-	elif len(a)==24:
-		a=a[:20]+['','']+a[20:]#26
-		a=a+['']#27
-	elif len(a)==26:
-	    a=a+['']
-	return a
- 
-
+def onlyForeclosureCSV(rrr,www,eachColumnSpace):
+	#rrr is file to read, www is a file that we want to write, eachColumnSpace is each column information 
+	with open(rrr,'r') as fc:
+		with open(www,'w') as wo:
+			wo.write(','.join(z[1])+'\n')
+			for i in fc.readlines():
+				eachList=[]
+				for j in eachColumnSpace:
+					eachList.append(i[:j])
+					i = i[j:]
+				#Last element of eachList is '\r\n'
+				eachList=eachList[:-1]
+				#We want to grab only data only or empty variable
+				eachList=[re.search(r'([^\s].*[^\s]|[^\s])|[ ]+', i).group() for i in eachList]
+				#For empty variables, we are replacing spaces with '' none. 
+				for i in range(len(eachList)):
+					if re.search(r'^\s+', eachList[i]):
+						eachList[i]=eachList[i].replace(' ','')
+				#Replacing commas with '' none. 
+				eachList=[i.replace(',','') for i in eachList]
+				wo.write(",".join(eachList)+'\n')
+	return "Done"
 
 ########################################################################
 ########################################################################
