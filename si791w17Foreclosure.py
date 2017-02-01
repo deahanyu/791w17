@@ -86,6 +86,23 @@ import sqlite3 as sqlite
 # myfunc.makingSingleFileForEach()
 
 
+#####################################################################################################
+################   			Checking 'unique Id' that represents each row 	         ################
+##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
+
+# with open('UmichForeclosure_Total.csv','r') as fc1:
+# 	fc1=fc1.readlines()[1:]
+# dd={}
+# for i in fc1:
+# 	if i.split(',')[8] not in dd:
+# 		dd[i.split(',')[8]]=1
+# 	else:
+# 		dd[i.split(',')[8]]+=1
+# print len(fc1) 		  #429587
+# print len(dd.keys())    #429587
+
+
+
 ####################################################################################################
 ###############           Making databases to look up index(row) numbers            ################
 #---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
