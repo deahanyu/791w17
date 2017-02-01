@@ -1,5 +1,6 @@
 import re
 import myfunc
+import sqlite3 as sqlite
 
 ############################################################################################################
 #########################     Week 1     ###################################################################
@@ -7,6 +8,8 @@ import myfunc
 ##---------------Please comment out below if you want to run this week's code.---------------##
 
 #Already changed the format as 'Recorder1.txt', 'Recorder2.txt', and 'Recorder3.txt'. 
+
+
 
 
 
@@ -23,14 +26,11 @@ import myfunc
 ##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
 
 # #Getting each column's information from REALTYTRAC DLP 3.0 Recorder Layout.xlsx
-# eachColumnSpace = myfunc.columnInformation('REALTYTRAC DLP 3.0 Recorder Layout.csv')
+# eachColumn = myfunc.columnInformation('REALTYTRAC DLP 3.0 Recorder Layout.csv',1)
 
-# myfunc.forRecorderOrTaxAssessorCSV('University_of_Michigan_Recorder_001.txt',['Recorder1a','Recorder1b','Recorder1c'],eachColumnSpace)
-# myfunc.forRecorderOrTaxAssessorCSV('University_of_Michigan_Recorder_002.txt',['Recorder2a','Recorder2b','Recorder2c'],eachColumnSpace)
-# myfunc.forRecorderOrTaxAssessorCSV('University_of_Michigan_Recorder_003.txt',['Recorder3a','Recorder3b','Recorder3c'],eachColumnSpace)
-
-#####################################################################################################
-#####################################################################################################
+# myfunc.forRecorderOrTaxAssessorCSV('University_of_Michigan_Recorder_001.txt',['Recorder1a','Recorder1b','Recorder1c'],eachColumn)
+# myfunc.forRecorderOrTaxAssessorCSV('University_of_Michigan_Recorder_002.txt',['Recorder2a','Recorder2b','Recorder2c'],eachColumn)
+# myfunc.forRecorderOrTaxAssessorCSV('University_of_Michigan_Recorder_003.txt',['Recorder3a','Recorder3b','Recorder3c'],eachColumn)
 
 #####################################################################################################
 ################            Checking if data has right number of records             ################
@@ -56,8 +56,27 @@ import myfunc
 # # ('washtenaw', 479496), 
 # # ('wayne', 2543766)]
 
+
+
+
+
+
+
+
+
+
+############################################################################################################
+#########################     Week 3     ###################################################################
+############################################################################################################
+
 #####################################################################################################
-#####################################################################################################
+################           Txt file for the column information - description         ################
+##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
+
+# #Getting each column's information from REALTYTRAC DLP 3.0 Recorder Layout.xlsx
+# eachColumn = myfunc.columnInformation('REALTYTRAC DLP 3.0 Recorder Layout.csv',1)
+# headers = eachColumn[1]#headers
+# myfunc.makingTxtfile('REALTYTRAC DLP 3.0 Recorder Layout.csv','RecorderLayout',headers,1)
 
 
 

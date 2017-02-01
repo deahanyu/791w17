@@ -25,6 +25,11 @@ import myfunc
 
 
 
+
+
+
+
+
 ############################################################################################################
 #########################     Week 2     ###################################################################
 ############################################################################################################
@@ -34,13 +39,14 @@ import myfunc
 ##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
 
 # #Getting each column's information from REALTYTRAC DLP 3.0 Assessor NO Geo Layout.xlsx
-# eachColumnSpace = myfunc.columnInformation('REALTYTRAC DLP 3.0 Assessor NO Geo Layout.csv')
+# eachColumn = myfunc.columnInformation('REALTYTRAC DLP 3.0 Assessor NO Geo Layout.csv',2)
 
-# myfunc.forRecorderOrTaxAssessorCSV('University_of_Michigan_TaxAssessor_001.txt',['TaxAssessor1a','TaxAssessor1b','TaxAssessor1c'],eachColumnSpace)
-# myfunc.forRecorderOrTaxAssessorCSV('University_of_Michigan_TaxAssessor_002.txt',['TaxAssessor2a','TaxAssessor2b','TaxAssessor2c'],eachColumnSpace)
+# with open('REALTYTRAC DLP 3.0 Assessor NO Geo Layout.csv','r') as fl:
+# 	#fl.readlines() or .read() gives one big string, so we are going to seperate by '\n'
+# 	of2=fl.read().splitlines()[64:108] 
 
-#####################################################################################################
-#####################################################################################################
+# myfunc.forRecorderOrTaxAssessorCSV('University_of_Michigan_TaxAssessor_001.txt',['TaxAssessor1a','TaxAssessor1b','TaxAssessor1c'],eachColumn)
+# myfunc.forRecorderOrTaxAssessorCSV('University_of_Michigan_TaxAssessor_002.txt',['TaxAssessor2a','TaxAssessor2b','TaxAssessor2c'],eachColumn)
 
 #####################################################################################################
 ################            Checking if data has right number of records             ################
@@ -66,6 +72,27 @@ import myfunc
 # # ('washtenaw', 146519), 
 # # ('wayne', 839597)]
 
+
+
+
+
+
+
+
+
+
+
+############################################################################################################
+#########################     Week 3     ###################################################################
+############################################################################################################
+
 #####################################################################################################
-#####################################################################################################
+################           Txt file for the column information - description         ################
+##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
+
+# #Getting each column's information from REALTYTRAC DLP 3.0 Assessor NO Geo Layout.xlsx
+# eachColumn = myfunc.columnInformation('REALTYTRAC DLP 3.0 Assessor NO Geo Layout.csv',2)
+# headers = eachColumn[1]#headers
+# myfunc.makingTxtfile('REALTYTRAC DLP 3.0 Assessor NO Geo Layout.csv','TaxAssessorLayout',headers,2)
+
 
