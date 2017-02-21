@@ -23,7 +23,6 @@ import sqlite3 as sqlite
 
 
 
-
 ############################################################################################################
 #########################     Week 2     ###################################################################
 ############################################################################################################
@@ -140,7 +139,7 @@ import sqlite3 as sqlite
 
 #####################################################################################################
 ################                 Database        exploratory                         ################
-##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
+# ##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
 
 # with sqlite.connect(r'db_saPropertyID_srUniqueID.db') as con: 
 # 	cur = con.cursor()
@@ -149,11 +148,11 @@ import sqlite3 as sqlite
 	# print len(check01.fetchall())#0
 	# check02=cur.execute("SELECT r.row,r.saPropertyID FROM r WHERE r.saPropertyID!=0")
 	# print len(check02.fetchall())#7056997
-	#one way checking f.row r.row with saPropertyID
+	# one way checking f.row r.row with saPropertyID
 
 	# #Double counting issues because properties have been reported more than once
 	# check1=cur.execute("SELECT f.row,r.row FROM f JOIN r ON (f.saPropertyID = r.saPropertyID ) WHERE r.saPropertyID!=0 ORDER BY f.row,r.row")
-	# print len(check1.fetchall())#2645169
+	# print len(check1.fetchall())#2,645,169
 	# #two way checking with ta table
 	# check2=cur.execute("SELECT f.row,r.row FROM ta JOIN r JOIN f ON (f.saPropertyID = ta.saPropertyID and ta.srUniqueID = r.srUniqueID) ORDER BY f.row,r.row")
 	# print len(check2.fetchall())#384446
@@ -164,12 +163,18 @@ import sqlite3 as sqlite
 	# print len(check1.fetchall())#251755
 
 	# ###My assumption is that check 21 and check 22 are same.
-	#two way checking with ta table
+	# two way checking with ta table
 	# selection21=cur.execute("SELECT f.row, r.row FROM f JOIN r JOIN ta ON (f.saPropertyID = r.saPropertyID and ta.srUniqueID = r.srUniqueID) WHERE r.saPropertyID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row")
 	# print len(selection21.fetchall())#228464
-	# #two way checking with ta table
-	# selection22=cur.execute("SELECT f.row,r.row FROM f JOIN r JOIN ta ON (f.saPropertyID = ta.saPropertyID and ta.srUniqueID = r.srUniqueID) WHERE ta.saPropertyID!=0 and ta.srUniqueID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row")
-	# print len(selection22.fetchall())#228461
+	# # #two way checking with ta table
+	# # selection22=cur.execute("SELECT f.row,r.row FROM f JOIN r JOIN ta ON (f.saPropertyID = ta.saPropertyID and ta.srUniqueID = r.srUniqueID) WHERE ta.saPropertyID!=0 and ta.srUniqueID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row")
+	# # print len(selection22.fetchall())#228461
+
+	# check1=cur.execute("SELECT f.row,r.row FROM f JOIN r JOIN ta ON (f.saPropertyID = r.saPropertyID and ta.srUniqueID = r.srUniqueID) WHERE r.saPropertyID!=0 ORDER BY f.row,r.row")
+	# print len(check1.fetchall())#384455
+	# 							 228464
+
+
 
 
 #####################################################################################################
@@ -214,7 +219,56 @@ import sqlite3 as sqlite
 # 		wo.write(",".join(a+b+c)+'\n')
 
 
+############################################################################################################
+#########################     Week 5     ###################################################################
+############################################################################################################
+
+####################################################################################################
+################              Spliting Fourclosure Address data set by Zipcode               ################
+# ##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
+
+# with open('selection21ForeclosureAddress.csv','r') as kw:
+# 	kw=kw.readlines()
+
+# listOfAddresses=[i[0] for i in [map(lambda j: i.split(',')[j] if len(i.split(',')[j])!=0 else '', [1]) for i in kw]]
+# listOfEmptyAddressIndex=[i for i in range(len(listOfAddresses)) if len(listOfAddresses[i])==0]
+# for i in listOfEmptyAddressIndex[::-1]: #reverse the order so that we can safely delete all elements (order matters)
+# 	del kw[i]
+# kw_data=sorted(kw[1:], key=lambda x : (x.split(',')[4],x.split(',')[2]))
+# listOfZipcode=[i[0].replace('\n','') for i in [map(lambda j: i.split(',')[j] if len(i.split(',')[j])!=0 else '', [4]) for i in kw_data]]
+
+# dict_Zip_Index={}
+# for i in range(len(listOfZipcode)-1):
+# 	i+=1
+# 	if listOfZipcode[i] not in dict_Zip_Index:
+# 		dict_Zip_Index[listOfZipcode[i]]=[i]
+# 	else:
+# 		dict_Zip_Index[listOfZipcode[i]]+=[i]
+
+# dict_Zip3_Zip5={}
+# for i in dict_Zip_Index:
+# 	if i[:3] not in dict_Zip3_Zip5:
+# 		dict_Zip3_Zip5[i[:3]]=[i]
+# 	else:
+# 		dict_Zip3_Zip5[i[:3]]+=[i]
+# for i in dict_Zip3_Zip5:
+# 	dict_Zip3_Zip5[i]=sorted(dict_Zip3_Zip5[i], key=lambda x : x)
+
+# dict_Zip_Data={}
+# for i in dict_Zip_Index:
+# 	dict_Zip_Data[i]=[]
+# 	for j in dict_Zip_Index[i]:
+# 		dict_Zip_Data[i]+=[kw_data[j]]
+# for i in dict_Zip_Data:
+# 	dict_Zip_Data[i]=sorted(dict_Zip_Data[i], key=lambda x : (x.split(',')[4],x.split(',')[2]))
+
+# for k in dict_Zip3_Zip5:
+# 	names='ForeclosureAddress_'+k+'.csv'
+# 	with open(names,'w') as zk:
+# 		zk.write(kw[0])
+# 		for i in dict_Zip3_Zip5[k]:
+# 			for j in dict_Zip_Data[i]:
+# 				zk.write(j)
 
 
 
-# print map(lambda j: ['a','b','c'][j], (0,1))
