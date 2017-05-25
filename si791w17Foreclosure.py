@@ -1,98 +1,348 @@
 import re
-import myfunc
 import itertools
 import datetime
 import sqlite3 as sqlite
+import requests 
+import urllib2
+import json
+import os
+import traceback
+import pandas as pd
+import numpy as np
+from inflation_calc.inflation import Inflation
 
-############################################################################################################
-#########################     Week 1     ###################################################################
-############################################################################################################
-##---------------ignore code BELOW completely. NOT useful at all.---------------##
-# with open('University_of_Michigan_Foreclosure_001.txt','r') as fc:
-# 	with open('foreclosureOriginal.csv','w') as wo:
-# 		wo.write('\n')
-# 		for i in fc.readlines():
-# 			k = myfunc.foreclosureStandardizeObj(myfunc.adjustForeclosureObj(i))
-# 			wo.write(",".join(k)+'\n')
-##---------------ignore code ABOVE completely. NOT useful at all.---------------##
+# #This is for txt -> multiple csv files 
+# #and multiple csv files -> one big files
+# def columnInformation(csvFileFullName,k):
+# 	#Getting each column's information from csvFileFullName
+# 	#k==0 for Forclosure 
+# 	#k==1 for Recorder
+# 	#k==2 for TaxAssessor
+# 	with open(csvFileFullName,'r') as fl:
+# 		if k==0:
+# 				#fl.readlines() or .read() gives one big string, so we are going to seperate by '\n'
+# 				of=fl.read().splitlines()[2:69] #first 2 lines are unnecessary and we only need upto line 69.
+# 		elif k==1:
+# 			of1=fl.read().splitlines()[2:47] #first 2 lines are unnecessary and we only need upto line 47.
+# 			with open(csvFileFullName,'r') as fl:
+# 				of2=fl.read().splitlines()[64:108] 
+# 			of=of1+of2
+# 		else:
+# 			of=fl.read().splitlines()[2:185] #first 2 lines are unnecessary and we only need upto line
+# 	z=[re.search(r'[0-9].*[0-9],',i).group().split(',')[:-1] for i in of]
+# 	z=zip(*z)
+# 	#z[0] is column number
+# 	#z[1] is headers
+# 	#z[-1] is amount space that each column has.
+# 	return z
+
+# def makingSingleFileForEach():
+# 	recorderFileList=['UMichRecorder1a.csv','UMichRecorder1b.csv','UMichRecorder1c.csv','UMichRecorder2a.csv','UMichRecorder2b.csv','UMichRecorder2c.csv','UMichRecorder3a.csv','UMichRecorder3b.csv','UMichRecorder3c.csv']
+# 	taxAsseossorFileList=['UMichTaxAssessor1a.csv','UMichTaxAssessor1b.csv','UMichTaxAssessor1c.csv','UMichTaxAssessor2a.csv','UMichTaxAssessor2b.csv','UMichTaxAssessor2c.csv']
+# 	keysList=['1a','1b','1c','2a','2b','2c','3a','3b','3c']
+# 	with open('UMichTaxAssessor_Total.csv','w') as wo:
+# 		with open('UMichTaxAssessor1a.csv','r') as rc:
+# 			for i in rc.readlines():
+# 				wo.write(i)
+# 		for i in range(5):
+# 			with open(taxAsseossorFileList[i+1],'r') as rc:
+# 				for j in rc.readlines()[1:]:
+# 					wo.write(j)
+# 	with open('UmichRecorder_Total.csv','w') as wo:
+# 		with open('UMichRecorder1a.csv','r') as rc:
+# 			for i in rc.readlines():
+# 				wo.write(i)
+# 		for i in range(8):
+# 			with open(recorderFileList[i+1],'r') as rc:
+# 				for j in rc.readlines()[1:]:
+# 					wo.write(j)
+# 	return 'Done'
+
+# def makingTxtfile(rrr,www,hhh,c):
+# 	#rrr = CSV full file name
+# 	#www = name textfile
+# 	#hhh = headers
+# 	#c==0 for Forclosure 
+# 	#c==1 for Recorder
+# 	#c==2 for TaxAssessor
+
+# 	#Getting each column's information from csvFileFullName
+# 	with open(rrr,'r') as fl:
+# 		if c==0:
+# 				#fl.readlines() or .read() gives one big string, so we are going to seperate by '\n'
+# 				of=fl.read().splitlines()[2:69] #first 2 lines are unnecessary and we only need upto line 69.
+# 		elif c==1:
+# 			of1=fl.read().splitlines()[2:64] #first 2 lines are unnecessary and we only need upto line 47.
+# 			with open(rrr,'r') as fl:
+# 				of2=fl.read().splitlines()[64:108] 
+# 			s=''
+# 			for i in of1[45:]:
+# 				s+=i
+# 			of1[44]=of1[44]+s
+# 			of=of1[:45]+of2
+# 		else:
+# 			of=fl.read().splitlines()[2:185]
+# 	with open('UMich'+www+'.txt','w') as wo:
+# 		ck=0
+# 		for i in of:
+# 			if re.search(r'(Yes|No)(.*)',i):
+# 				k = re.search(r'(Yes|No)(.*)',i).group(2)[1:]
+# 				if re.search(r'\s{2,}',k):
+# 					gone = re.search(r'\s{2,}',k).group()
+# 					k = k.replace(gone,'')
+# 			else: 
+# 				k = ''
+# 			wo.write("\n".join([hhh[ck],'\t'+k])+'\n\n\n')
+# 			ck+=1
+# 	return 'DONE'
+
+# def checkingRecords(k,col,dd):
+# 	#imput: k = each file's unique name, col=column number, dd=dictionary
+# 	with open('UMich'+k+'.csv') as dk:
+# 		for i in dk.readlines()[1:]:
+# 			if i.split(',')[col].lower() in dd:
+# 				dd[i.split(',')[col].lower()]+=1
+# 			else:
+# 				dd[i.split(',')[col].lower()]=1
+# 	return dd
+
+# def forRecorderOrTaxAssessorCSV(rrr,www,columnInformation):
+# 	eachColumnSpace=[int(i) for i in columnInformation[-1]]
+# 	#rrr is file to read, www is a list of file names (3), eachcolumnspace is each column information 
+# 	with open(rrr,'r') as rc:
+# 		totalNumberOfRows=len(rc.readlines())
+# 	remainder=totalNumberOfRows%3
+# 	totalNum=totalNumberOfRows-remainder
+# 	oneChunk=totalNum/3
+# 	splitFiles=[oneChunk,2*oneChunk]#we only need to check 2 points to split them into 3 parts
+
+# 	with open(rrr,'r') as rc:
+# 		with open('UMich'+www[0]+'.csv','w') as wo:
+# 			wo.write(','.join(columnInformation[1])+'\n')
+# 			for i in rc.readlines()[0:splitFiles[0]]:
+# 				eachList=[]
+# 				for j in eachColumnSpace:
+# 					eachList.append(i[:j])
+# 					i = i[j:]
+# 				#Last element of eachList is '\r\n'
+# 				eachList=eachList[:-1]
+# 				#We want to grab only data only or empty variable
+# 				eachList=[re.search(r'([^\s].*[^\s]|[^\s])|[ ]+', i).group() for i in eachList]
+# 				#For empty variables, we are replacing spaces with '' none. 
+# 				for i in range(len(eachList)):
+# 					if re.search(r'^\s+', eachList[i]):
+# 						eachList[i]=eachList[i].replace(' ','')
+# 				#Replacing commas with '' none. 
+# 				eachList=[i.replace(',','') for i in eachList]
+# 				wo.write(",".join(eachList)+'\n')
+
+# 	with open(rrr,'r') as rc:
+# 		with open('UMich'+www[1]+'.csv','w') as wo:
+# 			wo.write(','.join(columnInformation[1])+'\n')
+# 			for i in rc.readlines()[splitFiles[0]:splitFiles[1]]:
+# 				eachList=[]
+# 				for j in eachColumnSpace:
+# 					eachList.append(i[:j])
+# 					i = i[j:]
+# 				#Last element of eachList is '\r\n'
+# 				eachList=eachList[:-1]
+# 				#We want to grab only data only or empty variable
+# 				eachList=[re.search(r'([^\s].*[^\s]|[^\s])|[ ]+', i).group() for i in eachList]
+# 				#For empty variables, we are replacing spaces with '' none. 
+# 				for i in range(len(eachList)):
+# 					if re.search(r'^\s+', eachList[i]):
+# 						eachList[i]=eachList[i].replace(' ','')
+# 				#Replacing commas with '' none. 
+# 				eachList=[i.replace(',','') for i in eachList]
+# 				wo.write(",".join(eachList)+'\n')
+
+# 	with open(rrr,'r') as rc:
+# 		with open('UMich'+www[2]+'.csv','w') as wo:
+# 			wo.write(','.join(columnInformation[1])+'\n')
+# 			for i in rc.readlines()[splitFiles[1]:]:
+# 				eachList=[]
+# 				for j in eachColumnSpace:
+# 					eachList.append(i[:j])
+# 					i = i[j:]
+# 				#Last element of eachList is '\r\n'
+# 				eachList=eachList[:-1]
+# 				#We want to grab only data only or empty variable
+# 				eachList=[re.search(r'([^\s].*[^\s]|[^\s])|[ ]+', i).group() for i in eachList]
+# 				#For empty variables, we are replacing spaces with '' none. 
+# 				for i in range(len(eachList)):
+# 					if re.search(r'^\s+', eachList[i]):
+# 						eachList[i]=eachList[i].replace(' ','')
+# 				#Replacing commas with '' none. 
+# 				eachList=[i.replace(',','') for i in eachList]
+# 				wo.write(",".join(eachList)+'\n')
+# 	return "Done"
+
+# def onlyForeclosureCSV(rrr,www,columnInformation):
+# 	eachColumnSpace=[int(i) for i in columnInformation[-1]]
+# 	#rrr is file to read, www is a file that we want to write, eachColumnSpace is each column information 
+# 	with open(rrr,'r') as fc:
+# 		with open(www,'w') as wo:
+# 			wo.write(','.join(columnInformation[1])+'\n')
+# 			for i in fc.readlines():
+# 				eachList=[]
+# 				for j in eachColumnSpace:
+# 					eachList.append(i[:j])
+# 					i = i[j:]
+# 				#Last element of eachList is '\r\n'
+# 				eachList=eachList[:-1]
+# 				#We want to grab only data only or empty variable
+# 				eachList=[re.search(r'([^\s].*[^\s]|[^\s])|[ ]+', i).group() for i in eachList]
+# 				#For empty variables, we are replacing spaces with '' none. 
+# 				for i in range(len(eachList)):
+# 					if re.search(r'^\s+', eachList[i]):
+# 						eachList[i]=eachList[i].replace(' ','')
+# 				#Replacing commas with '' none. 
+# 				eachList=[i.replace(',','') for i in eachList]
+# 				wo.write(",".join(eachList)+'\n')
+# 	return "Done"
+
+# #This is for sqlite.
+# def makingListForACertainColumn_Integer(fullName,listOfIndexNumb):
+# 	#fullName:file full name
+# 	#listOfIndexNumb: list of index number
+# 	#returns a single list contains len(listOfIndexNumb) number of tuples
+# 	with open(fullName,'r') as fl:
+# 		ff=fl.readlines()
+# 	return [tuple(map(lambda j: int(i.split(',')[j]) if len(i.split(',')[j])!=0 else 0, listOfIndexNumb)) for i in ff[1:]]
+# #This is for sqlite.
+# def makingListForACertainColumn_Text(fullName,listOfIndexNumb):
+# 	#fullName:file full name
+# 	#listOfIndexNumb: list of index number
+# 	#returns a single list contains len(listOfIndexNumb) number of tuples
+# 	with open(fullName,'r') as fl:
+# 		ff=fl.readlines()
+# 	return [tuple(map(lambda j: i.split(',')[j], listOfIndexNumb)) for i in ff[1:]]
 
 
 
 
 
+# ############################################################################################################
+# #########################     Step 1     ###################################################################
+# ############################################################################################################
 
+# ################     Creating UMichForeclosure_Total.csv, UMichRecorder_Total.csv, UMichTaxAssessor_Total.c
+# ################     From original REALTYTRAC txt files
 
-
-############################################################################################################
-#########################     Week 2     ###################################################################
-############################################################################################################
-
-
-#####################################################################################################
-################               Saving an original version as CSV file                ################
-##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
-
+# #######Foreclosure
 # #Getting each column's information from REALTYTRAC DLP 3.0 Foreclosure Layout.xlsx
-# eachColumn = myfunc.columnInformation('REALTYTRAC DLP 3.0 Foreclosure Layout.csv',0)
+# eachColumn = columnInformation('REALTYTRAC DLP 3.0 Foreclosure Layout.csv',0)
+# ignoreMe = onlyForeclosureCSV('University_of_Michigan_Foreclosure_001.txt','UMichForeclosure_Total.csv',eachColumn)
 
-# myfunc.onlyForeclosureCSV('University_of_Michigan_Foreclosure_001.txt','UMichForeclosure.csv',eachColumn)
+# #######Recorder
+# #Getting each column's information from REALTYTRAC DLP 3.0 Recorder Layout.xlsx
+# eachColumn = columnInformation('REALTYTRAC DLP 3.0 Recorder Layout.csv',1)
+# ignoreMe = forRecorderOrTaxAssessorCSV('University_of_Michigan_Recorder_001.txt',['Recorder1a','Recorder1b','Recorder1c'],eachColumn)
+# ignoreMe = forRecorderOrTaxAssessorCSV('University_of_Michigan_Recorder_002.txt',['Recorder2a','Recorder2b','Recorder2c'],eachColumn)
+# ignoreMe = forRecorderOrTaxAssessorCSV('University_of_Michigan_Recorder_003.txt',['Recorder3a','Recorder3b','Recorder3c'],eachColumn)
 
-
-#####################################################################################################
-################            Checking if data has right number of records             ################
-##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
-
-# kk= myfunc.checkingRecords('Foreclosure',col=6,dd={})
-# print sum(kk.values())
-# print sorted(kk.items(), key= lambda x: x[0])
-#	  
-#	  #429875, Actual records: 429875
-#     #[('genesee', 31185)
-#     #('lapeer', 4885), 
-#     #('livingston', 7556), 
-#     # ('macomb', 60447), 
-#     # ('monroe', 7582), 
-#     # ('oakland', 73751), 
-#     # ('saint clair', 9886), 
-#     # ('washtenaw', 13098), 
-#     # ('wayne', 221197)]
-
-
-
-
-
-
-
-
-
-
-
-############################################################################################################
-#########################     Week 3     ###################################################################
-############################################################################################################
-
-
-#####################################################################################################
-################           Txt file for the column information - description         ################
-##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
-
-# #Getting each column's information from REALTYTRAC DLP 3.0 Foreclosure Layout.xlsx
-# eachColumn = myfunc.columnInformation('REALTYTRAC DLP 3.0 Foreclosure Layout.csv',0)
-# headers = eachColumn[1]#headers
-# myfunc.makingTxtfile('REALTYTRAC DLP 3.0 Foreclosure Layout.csv','ForeclosureLayout',headers,0)
+# #######TaxAssessor
+# #Getting each column's information from REALTYTRAC DLP 3.0 Assessor NO Geo Layout.xlsx
+# eachColumn = columnInformation('REALTYTRAC DLP 3.0 Assessor NO Geo Layout.csv',2)
+# ignoreMe = forRecorderOrTaxAssessorCSV('University_of_Michigan_TaxAssessor_001.txt',['TaxAssessor1a','TaxAssessor1b','TaxAssessor1c'],eachColumn)
+# ignoreMe = forRecorderOrTaxAssessorCSV('University_of_Michigan_TaxAssessor_002.txt',['TaxAssessor2a','TaxAssessor2b','TaxAssessor2c'],eachColumn)
 
 # #making UmichRecorder_Total +UmichTaxAssessor_Total file.
-# myfunc.makingSingleFileForEach()
+# ignoreMe = makingSingleFileForEach()
+
+# ################     Checking if data has right number of records           
+
+# #######Foreclosure
+# kk = checkingRecords('Foreclosure',col=6,dd={})
+# print sum(kk.values())
+# print sorted(kk.items(), key= lambda x: x[0])
+# #Total: 429875
+# #[('genesee', 31185)
+# #('lapeer', 4885), 
+# #('livingston', 7556), 
+# # ('macomb', 60447), 
+# # ('monroe', 7582), 
+# # ('oakland', 73751), 
+# # ('saint clair', 9886), 
+# # ('washtenaw', 13098), 
+# # ('wayne', 221197)]
+
+# #######Recorder
+# lr = ['Recorder'+j for j in ['1a','1b','1c','2a','2b','2c','3a','3b','3c']]
+# for i in lr:
+# 	if i =='Recorder1a':
+# 		subs = checkingRecords(i,col=7,dd={})
+# 	else:
+# 		final = checkingRecords(i,col=7,dd=subs)
+# 		subs = final
+# print sum(final.values())
+# print sorted(final.items(), key= lambda x: x[0])
+# # Total: 7056997
+# # [('genesee', 427178), 
+# # ('lapeer', 58920), 
+# # ('livingston', 349521), 
+# # ('macomb', 774258), 
+# # ('monroe', 111704), 
+# # ('oakland', 2186468), 
+# # ('st. clair', 125686), 
+# # ('washtenaw', 479496), 
+# # ('wayne', 2543766)]
+
+# #######TaxAssessor
+# lta = ['TaxAssessor'+j for j in ['1a','1b','1c','2a','2b','2c']]
+# for i in lta:
+# 	if i =='TaxAssessor1a':
+# 		subs = checkingRecords(i,col=6,dd={})
+# 	else:
+# 		final = checkingRecords(i,col=6,dd=subs)
+# 		subs = final
+# print sum(final.values())
+# print sorted(final.items(), key= lambda x: x[0])
+# # Total: 2290956
+# # [('genesee', 195890), 
+# # ('lapeer', 44837), 
+# # ('livingston', 90088), 
+# # ('macomb', 330502), 
+# # ('monroe', 75122), 
+# # ('oakland', 485889), 
+# # ('saint clair', 82512), 
+# # ('washtenaw', 146519), 
+# # ('wayne', 839597)]
 
 
-#####################################################################################################
-################   			Checking 'unique Id' that represents each row 	         ################
-##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
 
+
+
+# ############################################################################################################
+# #########################     Step 2     ###################################################################
+# ############################################################################################################
+
+# ################     Txt file for the column information(description)      
+
+# #Getting each column's information from REALTYTRAC DLP 3.0 Foreclosure Layout.xlsx
+# eachColumn = columnInformation('REALTYTRAC DLP 3.0 Foreclosure Layout.csv',0)
+# headers = eachColumn[1]#headers
+# ignoreMe = makingTxtfile('REALTYTRAC DLP 3.0 Foreclosure Layout.csv','ForeclosureLayout',headers,0)
+
+# #######Recorder
+# #Getting each column's information from REALTYTRAC DLP 3.0 Recorder Layout.xlsx
+# eachColumn = columnInformation('REALTYTRAC DLP 3.0 Recorder Layout.csv',1)
+# headers = eachColumn[1]#headers
+# ignoreMe = makingTxtfile('REALTYTRAC DLP 3.0 Recorder Layout.csv','RecorderLayout',headers,1)
+
+# #######TaxAssessor
+# #Getting each column's information from REALTYTRAC DLP 3.0 Assessor NO Geo Layout.xlsx
+# eachColumn = columnInformation('REALTYTRAC DLP 3.0 Assessor NO Geo Layout.csv',2)
+# headers = eachColumn[1]#headers
+# ignoreMe = makingTxtfile('REALTYTRAC DLP 3.0 Assessor NO Geo Layout.csv','TaxAssessorLayout',headers,2)
+
+# ################     Checking 'unique Id' that represents each row 	      
+# #Only for Foreclosure data
 # with open('UmichForeclosure_Total.csv','r') as fc1:
 # 	fc1=fc1.readlines()[1:]
 # dd={}
 # for i in fc1:
+# 	#9th element is 'unique id'
 # 	if i.split(',')[8] not in dd:
 # 		dd[i.split(',')[8]]=1
 # 	else:
@@ -102,21 +352,25 @@ import sqlite3 as sqlite
 
 
 
-####################################################################################################
-###############           Making databases to look up index(row) numbers            ################
-#---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
+
+
+# ############################################################################################################
+# #########################     Step 3     ###################################################################
+# ############################################################################################################
+
+# ###############   Making databases to look up index(row) numbers
 
 # print datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 # #0 saPropetyID , 7 srUniqueID
-# UMF=myfunc.makingListForACertainColumn_Integer('UmichForeclosure_Total.csv',[0,7])
+# UMF=makingListForACertainColumn_Integer('UmichForeclosure_Total.csv',[0,7])
 # print '1 / 3 completion'
 # print datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 # #0 saPropetyID , 171 srUniqueID
-# UMTA=myfunc.makingListForACertainColumn_Integer('UMichTaxAssessor_Total.csv',[0,171])
+# UMTA=makingListForACertainColumn_Integer('UMichTaxAssessor_Total.csv',[0,171])
 # print '2 / 3 completion'
 # print datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 # #0 srUniqueID, 1 saPropetyID 
-# UMR=myfunc.makingListForACertainColumn_Integer('UMichRecorder_Total.csv',[0,1])
+# UMR=makingListForACertainColumn_Integer('UMichRecorder_Total.csv',[0,1])
 # print '3 / 3 completion'
 # print datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
@@ -135,140 +389,592 @@ import sqlite3 as sqlite
 # 	cur.executemany("INSERT INTO r (srUniqueID,saPropertyID) VALUES (?,?)", UMR)
 # 	con.commit()
 	
-	
-
-#####################################################################################################
-################                 Database        exploratory                         ################
-# ##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
+# ################    Database exploratory
 
 # with sqlite.connect(r'db_saPropertyID_srUniqueID.db') as con: 
 # 	cur = con.cursor()
-	# #To see how many of them do not contain 0
-	# check01=cur.execute("SELECT f.row,f.srUniqueID FROM f WHERE f.srUniqueID!=0")
-	# print len(check01.fetchall())#0
-	# check02=cur.execute("SELECT r.row,r.saPropertyID FROM r WHERE r.saPropertyID!=0")
-	# print len(check02.fetchall())#7056997
-	# one way checking f.row r.row with saPropertyID
+# 	To see how many of them do not contain 0
+# 	check01=cur.execute("SELECT f.row,f.srUniqueID FROM f WHERE f.srUniqueID!=0")
+# 	print len(check01.fetchall())#0
+# 	check02=cur.execute("SELECT r.row,r.saPropertyID FROM r WHERE r.saPropertyID!=0")
+# 	print len(check02.fetchall())#7056997
+# 	#one way checking f.row r.row with saPropertyID
 
-	# #Double counting issues because properties have been reported more than once
-	# check1=cur.execute("SELECT f.row,r.row FROM f JOIN r ON (f.saPropertyID = r.saPropertyID ) WHERE r.saPropertyID!=0 ORDER BY f.row,r.row")
-	# print len(check1.fetchall())#2,645,169
-	# #two way checking with ta table
-	# check2=cur.execute("SELECT f.row,r.row FROM ta JOIN r JOIN f ON (f.saPropertyID = ta.saPropertyID and ta.srUniqueID = r.srUniqueID) ORDER BY f.row,r.row")
-	# print len(check2.fetchall())#384446
+# 	#Double counting (because properties have been reported more than once)
+# 	check1=cur.execute("SELECT f.row,r.row FROM f JOIN r ON (f.saPropertyID = r.saPropertyID ) WHERE r.saPropertyID!=0 ORDER BY f.row,r.row")
+# 	print len(check1.fetchall())#2,645,169
 
-	# #Below is unique case for each property where we used GROUP BY METHOD 
-	# #one way checking
-	# selection1=cur.execute("SELECT f.row, r.row FROM f JOIN r ON (f.saPropertyID = r.saPropertyID ) WHERE r.saPropertyID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row")
-	# print len(check1.fetchall())#251755
+# 	#two way checking with ta table
+# 	check2=cur.execute("SELECT f.row,r.row FROM ta JOIN r JOIN f ON (f.saPropertyID = ta.saPropertyID and ta.srUniqueID = r.srUniqueID) ORDER BY f.row,r.row")
+# 	print len(check2.fetchall())#384,446
 
-	# ###My assumption is that check 21 and check 22 are same.
-	# two way checking with ta table
-	# selection21=cur.execute("SELECT f.row, r.row FROM f JOIN r JOIN ta ON (f.saPropertyID = r.saPropertyID and ta.srUniqueID = r.srUniqueID) WHERE r.saPropertyID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row")
-	# print len(selection21.fetchall())#228464
-	# # #two way checking with ta table
-	# # selection22=cur.execute("SELECT f.row,r.row FROM f JOIN r JOIN ta ON (f.saPropertyID = ta.saPropertyID and ta.srUniqueID = r.srUniqueID) WHERE ta.saPropertyID!=0 and ta.srUniqueID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row")
-	# # print len(selection22.fetchall())#228461
+# 	#Below is unique case for each property where we used GROUP BY METHOD 
 
-	# check1=cur.execute("SELECT f.row,r.row FROM f JOIN r JOIN ta ON (f.saPropertyID = r.saPropertyID and ta.srUniqueID = r.srUniqueID) WHERE r.saPropertyID!=0 ORDER BY f.row,r.row")
-	# print len(check1.fetchall())#384455
-	# 							 228464
+# 	#one way checking
+# 	selection1=cur.execute("SELECT f.row, r.row FROM f JOIN r ON (f.saPropertyID = r.saPropertyID ) WHERE r.saPropertyID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row")
+# 	print len(check1.fetchall())#251,755
+
+#	#two way checking using fc table with saPropertyID
+#	selection21=cur.execute("SELECT f.row, r.row, ta.row FROM f JOIN r JOIN ta ON (f.saPropertyID = r.saPropertyID and f.saPropertyID = ta.saPropertyID ) WHERE r.saPropertyID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row,ta.row")
+#	print len(selection21.fetchall())#251,755
+
+# 	# two way checking using r table
+# 	selection22=cur.execute("SELECT f.row, r.row, ta.row  FROM f JOIN r JOIN ta ON (f.saPropertyID = r.saPropertyID and r.srUniqueID = ta.srUniqueID ) WHERE r.saPropertyID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row,ta.row ")
+# 	print len(selection21.fetchall())#228,464
+
+# 	#two way checking using ta table
+# 	selection23=cur.execute("SELECT f.row,r.row,  ta.row  FROM f JOIN r JOIN ta ON (f.saPropertyID = ta.saPropertyID and ta.srUniqueID = r.srUniqueID) WHERE ta.saPropertyID!=0 and ta.srUniqueID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row,ta.row ")
+# 	print len(selection22.fetchall())#228,461
+
+	
 
 
-
-
-#####################################################################################################
-################  Making 2 csv files for forclosure and recorder using selection21   ################
-##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
+# ################  Making 3 csv files for forclosure and recorder using selection21   ################
 
 # #Using selection21
 # with sqlite.connect(r'db_saPropertyID_srUniqueID.db') as con: 
 # 	cur = con.cursor()
-# 	selection21=cur.execute("SELECT f.row, r.row FROM f JOIN r JOIN ta ON (f.saPropertyID = r.saPropertyID and ta.srUniqueID = r.srUniqueID) WHERE r.saPropertyID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row")
+# 	selection21=cur.execute("SELECT f.row, r.row, ta.row FROM f JOIN r JOIN ta ON (f.saPropertyID = r.saPropertyID and f.saPropertyID = ta.saPropertyID ) WHERE r.saPropertyID!=0 GROUP BY f.saPropertyID ORDER BY f.row,r.row,ta.row")
 # 	selection21Inds = zip(*selection21.fetchall())
-# with open('UMichForeclosure_Total.csv','r') as fc:
+
+# with open('JanFeb/UMichForeclosure_Total.csv','r') as fc:
 # 	fc=fc.readlines()
-# 	with open('selection21Foreclosure.csv','w') as wo:
+# 	with open('JanFeb/selection21Foreclosure.csv','w') as wo:
 # 		wo.write(fc[0])
 # 		for i in map(lambda j: fc[j], selection21Inds[0]):
 # 			wo.write(i)
-# with open('UMichRecorder_Total.csv','r') as fc:
+# with open('JanFeb/UMichRecorder_Total.csv','r') as fc:
 # 	fc=fc.readlines()
-# 	with open('selection21Recorder.csv','w') as wo:
+# 	with open('JanFeb/selection21Recorder.csv','w') as wo:
 # 		wo.write(fc[0])
 # 		for i in map(lambda j: fc[j], selection21Inds[1]):
 # 			wo.write(i)
+# with open('JanFeb/UMichTaxAssessor_Total.csv','r') as fc:
+# 	fc=fc.readlines()
+# 	with open('JanFeb/selection21TaxAssessor.csv','w') as wo:
+# 		wo.write(fc[0])
+# 		for i in map(lambda j: fc[j], selection21Inds[2]):
+# 			wo.write(i)
+# print 'Done!'
 
 
 
-#####################################################################################################
-################        Making csv file for foreclosure properties address           ################
-##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
 
-# with open('selection21Foreclosure.csv','r') as fc1:
+# ############################################################################################################
+# #########################     Step 4     ###################################################################
+# ############################################################################################################
+
+# ###############   Creating CSV file for foreclosure properties address
+# with open('JanFeb/selection21Foreclosure.csv','r') as fc1:
 # 	fc1=fc1.readlines()[1:]
-# with open('selection21Recorder.csv','r') as fc2:
+# with open('JanFeb/selection21Recorder.csv','r') as fc2:
 # 	fc2=fc2.readlines()[1:]
-# with open('selection21ForeclosureAddress.csv','w') as wo:
-# 	wo.write('SA_PROPERTY_ID,SR_SITE_ADDR_RAW,FT_SITE_CITY,FT_SITE_STATE,FT_SITE_ZIP\n')
+# with open('JanFeb/selection21TaxAssessor.csv','r') as fc3:
+# 	fc3=fc3.readlines()[1:]
+
+# print len(fc1),len(fc2),len(fc3)
+
+# with open('JanFeb/selection21ForeclosureAddress.csv','w') as wo:
+# 	wo.write('SA_PROPERTY_ID,SR_SITE_ADDR_RAW,FT_SITE_CITY,FT_SITE_STATE,FT_SITE_ZIP,SA_VAL_ASS,SA_VAL_MARKET\n')
 # 	for i in range(len(fc1)):
 # 		k=fc1[i].split(',')
 # 		a=[k[0]]
 # 		b=[fc2[i].split(',')[9]]
 # 		c=map(lambda j: k[j], [55,56,57])
-# 		wo.write(",".join(a+b+c)+'\n')
+# 		d=[fc3[i].split(',')[85]]
+# 		e=[fc3[i].split(',')[95]]
+# 		wo.write(",".join(a+b+c+d+e)+'\n')
+# print 'Done!'
 
 
-############################################################################################################
-#########################     Week 5     ###################################################################
-############################################################################################################
 
-####################################################################################################
-################              Spliting Fourclosure Address data set by Zipcode               ################
-# ##---------------DO NOT COMMENT OUT THIS CODE BELOW UNLESS YOU WANT TO RUN IT AGAIN ---------------##
 
-# with open('selection21ForeclosureAddress.csv','r') as kw:
+# ################Removing empty addresses
+# #about 15000 were removed, 237541 left
+# with open('JanFeb/selection21ForeclosureAddress.csv','r') as kw:
 # 	kw=kw.readlines()
-
 # listOfAddresses=[i[0] for i in [map(lambda j: i.split(',')[j] if len(i.split(',')[j])!=0 else '', [1]) for i in kw]]
 # listOfEmptyAddressIndex=[i for i in range(len(listOfAddresses)) if len(listOfAddresses[i])==0]
 # for i in listOfEmptyAddressIndex[::-1]: #reverse the order so that we can safely delete all elements (order matters)
-# 	del kw[i]
-# kw_data=sorted(kw[1:], key=lambda x : (x.split(',')[4],x.split(',')[2]))
-# listOfZipcode=[i[0].replace('\n','') for i in [map(lambda j: i.split(',')[j] if len(i.split(',')[j])!=0 else '', [4]) for i in kw_data]]
+# 	del kw[i]	
+# with open('JanFeb/selection21ForeclosureAddress.csv','w') as wo:
+# 	for i in kw:
+# 		wo.write(i)
 
-# dict_Zip_Index={}
-# for i in range(len(listOfZipcode)-1):
-# 	i+=1
-# 	if listOfZipcode[i] not in dict_Zip_Index:
-# 		dict_Zip_Index[listOfZipcode[i]]=[i]
+
+
+# Then I geocoded all addresses and get the files in zip_coordinates file
+
+
+
+################     Creating CSV contains zip,tract,year
+
+# ###############This is to make sub csv files due to large amount
+# #total of 237541 properties
+# sfc=pd.read_csv('JanFeb/selection21Geocoded.txt')
+# thisChunk=len(sfc.index)/5
+# strt=len(sfc.index)/5
+# init=0
+# leftOver=len(sfc.index)%5
+# for i in range(5):
+# 	if i==4:
+# 		sfc[init:thisChunk+leftOver+1].to_csv('JanFeb/subfiles/sfc'+str(i)+'.txt', encoding='utf-8',index=False)
 # 	else:
-# 		dict_Zip_Index[listOfZipcode[i]]+=[i]
+# 		sfc[init:thisChunk].to_csv('JanFeb/subfiles/sfc'+str(i)+'.txt', encoding='utf-8',index=False)
+# 		init=thisChunk
+# 		thisChunk+=strt
 
-# dict_Zip3_Zip5={}
-# for i in dict_Zip_Index:
-# 	if i[:3] not in dict_Zip3_Zip5:
-# 		dict_Zip3_Zip5[i[:3]]=[i]
+# ###############Getting Census Tract using API
+# #Id-row-number
+# with open('JanFeb/selection21Foreclosure.csv','r') as fc1:
+# 	fc1=fc1.readlines()
+# dict_id_row={}
+# rowNumber=1
+# for i in fc1[1:]:
+# 	dict_id_row[i.split(',')[0]]=[rowNumber]
+# 	rowNumber+=1
+# print os.listdir('JanFeb/subfiles')[5:6]
+# for filename in os.listdir('JanFeb/subfiles')[5:6]:
+# 	print filename
+# 	print datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+# 	dict_id_coordinates={}
+# 	dict_id_propertyValues={}
+# 	with open('JanFeb/subfiles/'+filename,'r') as ck:
+# 		ck=ck.readlines()
+# 	for i in ck[1:]:
+# 		z=i.replace('\r\n','').replace('\n','').split(',')
+# 		dict_id_coordinates[z[3]]=(z[2],z[1])
+# 		dict_id_propertyValues[z[3]]=(z[4],z[5])
+# 	base='http://data.fcc.gov/api/block/2010/find'
+# 	ak= open('Zip_Year_Tract_after8568'+filename,'w')
+# 	ak.write('Tract,Zip,Year,saPropertyId,Val_ass,Val_market\n')
+# 	c=1
+# 	#for i in sorted(dict_id_coordinates.keys()):
+# 	for i in dict_id_coordinates:
+# 		if c>8568:
+# 			zipp=fc1[dict_id_row[i][0]].split(',')[57]#zip
+# 			yearr=fc1[dict_id_row[i][0]].split(',')[11][:4]#year
+# 			#Getting tract information for each housing unit
+# 			option={'latitude': float(dict_id_coordinates[i][0]),'longitude':float(dict_id_coordinates[i][1])}
+# 			tractt=re.search(r'<Block FIPS="([0-9]{11})',requests.get(url=base, params=option).text).group(1)
+# 			val1=dict_id_propertyValues[i][0]
+# 			val2=dict_id_propertyValues[i][1]		
+# 			ak.write("{},{},{},{},{},{}\n".format(tractt,zipp,yearr,i,val1,val2))
+# 			print c,len(ck)
+# 		c+=1
+# 	ak.close()
+# ################ Merging subfiles into one 
+# print os.listdir('zip_year_tract')
+# listOfFiles=os.listdir('zip_year_tract')
+# with open("Mar/Zip_Year_Tract_Id.txt",'w') as dk:
+# 	for i in range(len(listOfFiles)):
+# 		if i!='.DS_Store':
+# 			if i==1:
+# 				kk = open("zip_year_tract/"+listOfFiles[i],'r')
+# 				for j in kk.readlines():
+# 						dk.write(j)
+# 				kk.close()
+# 			else:
+# 				kk = open("zip_year_tract/"+listOfFiles[i],'r')
+# 				for j in kk.readlines()[1:]:
+# 						dk.write(j)
+# 				kk.close()
+
+# ################     Creating CSV contains County_Zip_TractLevel_totalNumbers
+# with open('JanFeb/selection21Foreclosure.csv','r') as fc1:
+# 	dict_countyCode_countyName={}
+# 	for i in fc1.readlines()[1:]:
+# 		if i.split(',')[5] not in dict_countyCode_countyName:
+# 			dict_countyCode_countyName[i.split(',')[5]]=i.split(',')[3]
+# print '1/3'
+# with open("Mar/Zip_Year_Tract_Id.txt",'r') as sk:
+# 	sk=sk.readlines()
+# dict_countyCode_tract={}
+# dict_tract_totalNumbs={}
+# dict_tract_dict_year_count={}
+# dict_tract_zip={}
+# dict_zip_tract={}
+# howManydifferentYear=[]
+# for i in sk[1:]:
+# 	countyCo=i.replace('\n','').split(',')[0][2:5]
+# 	thisOne=i.replace('\n','').split(',')[0]
+# 	zipp=i.replace('\n','').split(',')[1]
+# 	years=i.replace('\n','').split(',')[2]
+# 	if zipp not in dict_zip_tract:
+# 		dict_zip_tract[zipp]=[thisOne]
 # 	else:
-# 		dict_Zip3_Zip5[i[:3]]+=[i]
-# for i in dict_Zip3_Zip5:
-# 	dict_Zip3_Zip5[i]=sorted(dict_Zip3_Zip5[i], key=lambda x : x)
+# 		if thisOne not in dict_zip_tract[zipp]:
+# 			dict_zip_tract[zipp].append(thisOne)
 
-# dict_Zip_Data={}
-# for i in dict_Zip_Index:
-# 	dict_Zip_Data[i]=[]
-# 	for j in dict_Zip_Index[i]:
-# 		dict_Zip_Data[i]+=[kw_data[j]]
-# for i in dict_Zip_Data:
-# 	dict_Zip_Data[i]=sorted(dict_Zip_Data[i], key=lambda x : (x.split(',')[4],x.split(',')[2]))
+# 	if countyCo not in dict_countyCode_tract:
+# 		dict_countyCode_tract[countyCo]=[thisOne]
+# 	else:
+# 		if thisOne not in dict_countyCode_tract[countyCo]:
+# 			dict_countyCode_tract[countyCo].append(thisOne)
+# 	if thisOne not in dict_tract_totalNumbs:
+# 		dict_tract_totalNumbs[thisOne]=1
+# 	else:
+# 		dict_tract_totalNumbs[thisOne]+=1
+# 	if thisOne not in dict_tract_dict_year_count:
+# 		dict_tract_dict_year_count[thisOne]={}
+# 		dict_tract_dict_year_count[thisOne][years]=1
+# 	else:
+# 		if years not in dict_tract_dict_year_count[thisOne]:
+# 			dict_tract_dict_year_count[thisOne][years]=1
+# 		else:
+# 			dict_tract_dict_year_count[thisOne][years]+=1
+# 	if years not in howManydifferentYear:
+# 		howManydifferentYear.append(years)
+# 	if thisOne not in dict_tract_zip:
+# 		dict_tract_zip[thisOne]=zipp
+# print '2/3'
+# with open('Mar/County_Zip_TractLevel_totalNumbers.txt', 'w') as writeIt:
+# 	writeIt.write('County,Zipcode,Id2,Total,F2004,F2005,F2006,F2007,F2008,F2009,F2010,F2011,F2012,F2013,F2014,F2015\n')
+# 	for i in dict_countyCode_countyName:
+# 		countyName=dict_countyCode_countyName[i]
+# 		listOfTractCode=sorted(dict_countyCode_tract[i])
+# 		totalnumbs=0
+# 		eachyeartotal={}
+# 		for eachTract in listOfTractCode:
+# 			zipp=dict_tract_zip[eachTract]
+# 			eachTotal=dict_tract_totalNumbs[eachTract]
+# 			totalnumbs+=eachTotal
+# 			writeIt.write('{},{},{},{},'.format(countyName,zipp,eachTract,eachTotal))
+# 			for eachYear in sorted(howManydifferentYear):
+# 				if eachYear=='2015':
+# 					try:
+# 						writeIt.write('{}\n'.format(dict_tract_dict_year_count[eachTract][eachYear]))
+# 					except:
+# 						writeIt.write('0\n')
+# 				else:	
+# 					try:
+# 						writeIt.write('{},'.format(dict_tract_dict_year_count[eachTract][eachYear]))
+# 					except:
+# 						writeIt.write('0,')
 
-# for k in dict_Zip3_Zip5:
-# 	names='ForeclosureAddress_'+k+'.csv'
-# 	with open(names,'w') as zk:
-# 		zk.write(kw[0])
-# 		for i in dict_Zip3_Zip5[k]:
-# 			for j in dict_Zip_Data[i]:
-# 				zk.write(j)
+# print '3/3'
+
+
+
+
+
+# ###########################################################################################################
+# ########################     Step 5     ###################################################################
+# ###########################################################################################################
+
+# #Creating FC rates 
+
+# ################     Adding Mortgage numbers to County_Zip_TractLevel_totalNumbers.txt
+# lookUp=[i for i in os.listdir('Mar') if 'totalNumbers.txt' in i][0]
+# lookUp=pd.read_csv('Mar/'+lookUp)
+# listOfeachFile=os.listdir('Mar/ACS')
+# # lookUp = lookUp.loc[np.repeat(lookUp.index.values,6)]
+# # createNewDf=lookUp[['Id2','County']]
+# # yearss=[2010,2011,2012,2013,2014,2015]
+# # createNewDf['Year']=yearss * (createNewDf.shape[0]/len(yearss))
+# originalIndexNumber=len(lookUp.index)
+# #'Id2','County','Year','Foreclosure','RealEstateOwned','Total'
+# fYears=['F2010','F2011','F2012','F2013','F2014','F2015']
+# onlyForOnce=0 #this is to make initinal dataframe
+# newColumn1='Real_Estate_Owned'
+# newColumn2='Total'
+# for i in range(len(listOfeachFile)):
+# 	#this is order of [2010,2011,2012,2013,2014,2015]
+# 	print listOfeachFile[i]
+# 	eachDf=pd.read_csv('Mar/ACS/'+listOfeachFile[i],header=None)
+# 	eachDf.drop(eachDf.index[[0]],inplace=True)
+# 	eachDf.rename(columns=eachDf.iloc[0],inplace=True)
+# 	eachDf['Id2']=eachDf['Id2']
+# 	thislookup=lookUp[['Id2','County']]
+# 	thislookup['Year']=fYears[i][1:]
+# 	thislookup['Foreclosure']=lookUp[fYears[i]]
+# 	if onlyForOnce==0:
+# 		onlyForOnce+=1
+# 		#adding 'RealEstateOwned'
+# 		br=False
+# 		while br!=True:
+# 			for col in range(len(eachDf.columns)):
+# 				if 'Estimate; MORTGAGE STATUS' in eachDf.iloc[0,col] and 'Housing units with a mortgage' in eachDf.iloc[0,col]:
+# 					thisColumn=eachDf.iloc[0,col]
+# 					br=True
+# 					# print eachDf.loc[eachDf['Id2']=='26163599000',thisColumn]
+# 		eachDf[newColumn1]=eachDf[thisColumn]
+# 		eachDf['Id2'] = pd.to_numeric(eachDf['Id2'], errors='coerce')
+# 		thislookup1=pd.merge(thislookup, eachDf[['Id2',newColumn1]], left_on='Id2', right_on='Id2',  how='outer')
+# 		thislookup1=thislookup1[:originalIndexNumber]
+# 		#adding 'Total'
+# 		thisColumn=eachDf.iloc[0,3]
+# 		eachDf[newColumn2]=eachDf[thisColumn]
+# 		thislookup1=pd.merge(thislookup1, eachDf[['Id2',newColumn2]], left_on='Id2', right_on='Id2',  how='outer')
+# 		thislookup1=thislookup1[:originalIndexNumber]	
+
+# 		# I will make chunk every loop and rbind the chunk after second loop
+# 		#Id2, County year Foreclosures RealEstateOwned Total 
+# 	else:
+# 		br=False
+# 		while br!=True:
+# 			for col in range(len(eachDf.columns)):
+# 				if 'Estimate; MORTGAGE STATUS' in eachDf.iloc[0,col] and 'Housing units with a mortgage' in eachDf.iloc[0,col]:
+# 					thisColumn=eachDf.iloc[0,col]
+# 					br=True
+# 					# print eachDf.loc[eachDf['Id2']=='26163599000',thisColumn]
+# 		eachDf[newColumn1]=eachDf[thisColumn]
+# 		eachDf['Id2'] = pd.to_numeric(eachDf['Id2'], errors='coerce')
+# 		thislookup11=pd.merge(thislookup, eachDf[['Id2',newColumn1]], left_on='Id2', right_on='Id2',  how='outer')
+# 		thislookup11=thislookup11[:originalIndexNumber]
+		
+# 		thisColumn=eachDf.iloc[0,3]
+# 		eachDf[newColumn2]=eachDf[thisColumn]
+# 		thislookup11=pd.merge(thislookup11, eachDf[['Id2',newColumn2]], left_on='Id2', right_on='Id2',  how='outer')
+# 		thislookup11=thislookup11[:originalIndexNumber]
+# 		thislookup1 = thislookup1.append(thislookup11, ignore_index=True)
+
+# thislookup1['Id2']=thislookup1['Id2'].astype(int)
+# thislookup1['Foreclosure']=thislookup1['Foreclosure'].astype(int)
+# thislookup1['Real_Estate_Owned_Rate']=thislookup1['Foreclosure']/thislookup1['Real_Estate_Owned'].astype(float)
+# thislookup1['Overall_Rate']=thislookup1['Foreclosure']/thislookup1['Total'].astype(float)
+# thislookup1=thislookup1.rename(columns = {'Id2':'GEOID10','Count':'COUNTY','Year':'YEAR','Foreclosure':'FORECLOSURE','Real_Estate_Owned':'REAL_ESTATE_OWNED','Total':'ALL_HOUSING','Real_Estate_Owned_Rate':'REAL_ESTATE_OWNED_RATE','Overall_Rate':'ALL_HOUSING_RATE'})
+# thislookup1.to_csv('Mar/NE_ForeclosureRates.csv', encoding='utf-8',index=False)
+
+
+
+
+
+# ###########################################################################################################
+# ########################     Step 6     ###################################################################
+# ###########################################################################################################
+
+# #Creating all property values around 10 counties 
+# ta=pd.read_csv('JanFeb/UMichTaxAssessor_Total.csv')
+
+# print len(ta.index)
+# print 'TAXYEAR'
+# print ta.TAXYEAR.unique()
+# print 'ASSR_YEAR'
+# print ta.ASSR_YEAR.unique()
+# print 'SA_APPRAISE_YR'
+# print ta.SA_APPRAISE_YR.unique()
+# print 'SA_YR_LAND_APPRAISE'
+# print ta.SA_YR_LAND_APPRAISE.unique()
+# print 'SA_TAX_YEAR_DELINQ'
+# print ta.SA_TAX_YEAR_DELINQ.unique()
+# print 'SA_YR_BLT'
+# print ta.SA_YR_BLT.unique()
+# print 'SA_YR_BLT_EFFECT'
+# print ta.SA_YR_BLT_EFFECT.unique()
+# print 'SA_PARCEL_NBR_CHANGE_YR'
+# print ta.SA_PARCEL_NBR_CHANGE_YR.unique()
+# print 'SA_YR_APN_ADDED'
+# print ta.SA_YR_APN_ADDED.unique()
+
+rdd=pd.read_csv('JanFeb/UMichRecorder_Total.csv')
+
+#Example
+#s = pd.Series([0,1,2])
+#for i in s: 
+#    print (i)
+#0
+#1
+#2
+#type(rdd.SR_DATE_TRANSFER) -- series
+sdict={}
+for i in rdd.SR_DATE_TRANSFER:
+	kk = str(i)
+	if kk[:4] not in sdict:
+		sdict[kk[:4]]=1
+print sdict.keys()
+sdict={}
+for i in rdd.SR_DATE_FILING:
+	kk = str(i)
+	if kk[:4] not in sdict:
+		sdict[kk[:4]]=1
+print sdict.keys()
+
+
+# #SA_PROPERTY_ID, SR_UNIQUE_ID,SA_SITE_CITY,SA_SITE_STATE,SA_SITE_ZIP,TAXYEAR,SA_VAL_ASSD, SA_VAL_MARKET
+# ta = ta[['SR_UNIQUE_ID','SA_PROPERTY_ID','SA_SITE_CITY','SA_SITE_STATE','SA_SITE_ZIP','TAXYEAR','SA_VAL_ASSD','SA_VAL_MARKET']]
+# ta = ta[ta.SR_UNIQUE_ID != 0]
+# ta = ta[ta.SR_UNIQUE_ID.notnull()]
+# #Instead of doing TAXYEAR , SA_VAL_ASSD , and SA_VAL_MARKET, just doing SA_VAL_ASSD once
+# ta = ta[ta.SA_VAL_ASSD.notnull()]
+
+# rr=pd.read_csv('JanFeb/UmichRecorder_Total.csv')
+# #SR_UNIQUE_ID,SR_PROPERTY_ID, SR_SITE_ADDR_RAW
+# rr = rr[['SR_UNIQUE_ID','SR_PROPERTY_ID','SR_SITE_ADDR_RAW']]
+# rr = rr[rr.SR_UNIQUE_ID != 0]
+# rr = rr[rr.SR_UNIQUE_ID.notnull()]
+# rr = rr[rr.SR_SITE_ADDR_RAW.notnull()]
+
+# merged=pd.merge(ta, rr , on=['SR_UNIQUE_ID'],  how="outer")
+# merged.to_csv('Mar/property_FILTERED.txt', encoding='utf-8',index=False)
+
+# # #merged=pd.merge(ta, rr , on=['SR_UNIQUE_ID','SA_PROPERTY_ID'],  how="outer")
+# # #merged.to_csv('Mar/property_FILTERED_VER2.txt', encoding='utf-8',index=False)
+
+
+
+
+# #removing some rows once more 
+# rr=pd.read_csv('Mar/property_FILTERED.txt')
+# print len(rr.index)
+# rr = rr[rr.SA_VAL_ASSD.notnull()]
+# rr = rr[rr.SA_VAL_ASSD!=0]
+# rr.to_csv('Mar/property_Complete.txt', encoding='utf-8',index=False)
+
+# #steps for GEOCODING
+# tt=pd.read_csv('Mar/property_Complete.txt')
+# print len(tt.index)
+# tt = tt[['SR_UNIQUE_ID','SA_PROPERTY_ID','SR_SITE_ADDR_RAW','SA_SITE_CITY','SA_SITE_STATE','SA_SITE_ZIP','SA_VAL_ASSD','SA_VAL_MARKET']]
+# tt.to_csv('Mar/PropertyForGeocoding.csv', encoding='utf-8',index=False)
+
+#after geocoding all properties (about 1,080,000)
+###############This is to make sub csv files due to large amount
+#total of 1,080,000 properties
+# sfc=pd.read_csv('Mar/propertyGeocoded.txt')
+# thisChunk=len(sfc.index)/10
+# strt=len(sfc.index)/10
+# init=0
+# leftOver=len(sfc.index)%10
+# for i in range(10):
+# 	if i==9:
+# 		sfc[init:thisChunk+leftOver+1].to_csv('Mar/subfiles/propertyGeocoded'+str(i)+'.txt', encoding='utf-8',index=False)
+# 	else:
+# 		sfc[init:thisChunk].to_csv('Mar/subfiles/propertyGeocoded'+str(i)+'.txt', encoding='utf-8',index=False)
+# 		init=thisChunk
+# 		thisChunk+=strt
+
+# ###############Getting Census Tract using API
+# #Id-row-number
+# with open('Mar/property_Complete.txt','r') as fc1:
+# 	fc1=fc1.readlines()
+# dict_id_row={}
+# rowNumber=1
+# dict_id_propertyValues={}
+# for i in fc1[1:]:
+# 	z=i.replace('\r\n','').replace('\n','').split(',')
+# 	dict_id_row[z[1]]=[rowNumber]
+# 	rowNumber+=1
+# 	dict_id_propertyValues[z[1]]=(z[6],z[7])
+
+# print os.listdir('Mar/subfiles')[9:10]
+# for filename in os.listdir('Mar/subfiles')[9:10]:
+# 	print filename
+# 	print datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+# 	dict_id_coordinates={}
+# 	with open('Mar/subfiles/'+filename,'r') as ck:
+# 		ck=ck.readlines()
+# 	for i in ck[1:]:
+# 		z=i.replace('\r\n','').replace('\n','').split(',')
+# 		dict_id_coordinates[z[4]]=(z[2],z[1])
+# 	base='http://data.fcc.gov/api/block/2010/find'
+# 	ak= open('Zip_Year_Tract_103303'+filename,'w')
+# 	ak.write('Tract,Zip,Year,saPropertyId,Val_ass,Val_market\n')
+# 	c=1
+# 	#for i in sorted(dict_id_coordinates.keys()):
+# 	for i in dict_id_coordinates:
+# 		if c>103303:
+# 			zipp=fc1[dict_id_row[i][0]].split(',')[4]#zip
+# 			yearr=fc1[dict_id_row[i][0]].split(',')[5]#year
+# 			#Getting tract information for each housing unit
+# 			option={'latitude': float(dict_id_coordinates[i][0]),'longitude':float(dict_id_coordinates[i][1])}
+# 			tractt=re.search(r'<Block FIPS="([0-9]{11})',requests.get(url=base, params=option).text).group(1)
+# 			val1=dict_id_propertyValues[i][0]
+# 			val2=dict_id_propertyValues[i][1]		
+# 			ak.write("{},{},{},{},{},{}\n".format(tractt,zipp,yearr,i,val1,val2))
+# 			print c,len(ck)
+# 		c+=1
+# 	ak.close()
+
+# ################ Merging subfiles into one and deleting rows that are out of zipcode
+# #Step1
+# initialOne = pd.read_csv('Mar/pct/'+os.listdir('Mar/pct')[1])
+# #print initialOne.columns.to_series().groupby(initialOne.dtypes).groups
+# for i in os.listdir('Mar/pct')[2:]:
+# 	each=pd.read_csv('Mar/pct/'+i)
+# 	initialOne = initialOne.append(pd.DataFrame(data = each), ignore_index=True)
+# initialOne = initialOne[initialOne.Zip != 0.0]
+# colls=['Zip','Year','saPropertyId','Val_ass','Val_market']
+
+# initialOne[colls]=initialOne[colls].applymap(np.int64)
+# initialOne.to_csv('Mar/pct/homeValues.txt',index=False)
+
+# #Step2
+# # Create a new Inflation instance
+# inflation = Inflation()
+# infla={}
+# # How many US $ would I need in 2015 to pay for what cost $1 in eachYear
+# for i in range(11):
+# 	eachYear=i+2004
+# 	infla[eachYear]=inflation.inflate(1, datetime.date(2015,1,1), datetime.date(eachYear,1,1), 'United States')
+# print infla
+
+# dfp=pd.read_csv('Mar/pct/homeValues.txt')
+
+# dfp=dfp.sort(['Zip','Tract','Year'])
+# dfp=dfp.reset_index(drop=True)
+# dfp=dfp.rename(columns = {'Tract':'GEOID10','Val_ass':'VAL_ASS','Val_market':'VAL_MARKET','saPropertyId':'PROPERTY_ID','Zip':'ZIP','Year':'YEAR'})
+
+# dfp['VAL_ASS_15']=0.0
+# dfp['VAL_MARKET_15']=0.0
+
+# for i in infla:	
+# 	print i
+# 	dfp.ix[dfp['YEAR']==i,'VAL_ASS_15'] = dfp.ix[dfp['YEAR']==i,'VAL_ASS'] * infla[i]
+# 	dfp.ix[dfp['YEAR']==i,'VAL_MARKET_15'] = dfp.ix[dfp['YEAR']==i,'VAL_MARKET'] * infla[i]
+
+# dfp = dfp[dfp['GEOID10'].astype(str).str.startswith('26')]
+# dfp['GEOID10']=dfp['GEOID10'].astype(int)
+# dfp.to_csv('Mar/NE_PropertyValues.txt',index=False)
+
+# # #Step3
+# dfp=pd.read_csv('Mar/NE_PropertyValues.txt')
+# del dfp['PROPERTY_ID']
+# del dfp['ZIP']
+# dfp=dfp.groupby(['GEOID10','YEAR']).mean().reset_index()
+
+# dfp.to_csv('Mar/NE_PropertyValues_mean.txt',index=False)
+
+# ################# Merging NE datasets
+# dfp=pd.read_csv('Mar/NE_PropertyValues_mean.txt')
+# dfp2=pd.read_csv('Mar/NE_ForeclosureRates.csv')
+# dff=pd.merge(dfp2, dfp, on = ['GEOID10','YEAR'],  how='outer')
+# dff.to_csv('Apr/NE_data.csv',encoding='utf-8',index=False)
+
+
+
+
+
+
+######### Checking
+# ta=pd.read_csv('JanFeb/UMichTaxAssessor_Total.csv')
+# print "Total rows from UMichTaxAssessor_Total.csv"
+# print len(ta.index)
+# print "Unique tax years from UMichTaxAssessor_Total.csv"
+# print ta.TAXYEAR.unique()
+
+# rr=pd.read_csv('Mar/property_FILTERED.txt')
+# print "Total rows from property_FILTERED.txt"
+# print len(rr.index)
+# print "Unique tax years from property_FILTERED.txt"
+# print rr.TAXYEAR.unique()
+
+# rr=pd.read_csv('Mar/property_Complete.txt')
+# print "Total rows from property_Complete.txt"
+# print len(rr.index)
+# print "Unique tax years from property_Complete.txt"
+# print rr.TAXYEAR.unique()
+
+# rr=pd.read_csv('Mar/NE_PropertyValues.txt')
+# print "Total rows from NE_PropertyValues.txt"
+# print len(rr.index)
+# print "Unique YEARs from NE_PropertyValues.txt"
+# print rr.YEAR.unique()
+
+# rr=pd.read_csv('Mar/NE_PropertyValues_mean.txt')
+# print "Total rows from NE_PropertyValues_mean.txt"
+# print len(rr.index)
+# print "Unique YEARs from NE_PropertyValues_mean.txt"
+# print rr.YEAR.unique()
 
 
 
