@@ -218,6 +218,92 @@ from inflation_calc.inflation import Inflation
 # 		ff=fl.readlines()
 # 	return [tuple(map(lambda j: i.split(',')[j], listOfIndexNumb)) for i in ff[1:]]
 
+def gettingCensusTract(directory_k,k,starting=0,anyAdditionalName=''):
+	#directory_k is a string ex) 'Mar/subfiles'
+	#k is a list, contain how many files you want to request data 
+	#starting is an integer (a starting index number)
+	#anyAdditionalName is a string for file name 
+	print os.listdir(directory_k)[k[0]:k[1]]
+	for filename in os.listdir(directory_k)[k[0]:k[1]]:
+		print filename
+		print datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+		dict_id_coordinates={}
+		dict_id_row={}
+		rowNumber=1
+		dict_id_propertyValues={}
+		with open(directory_k+filename,'r') as ck:
+			ck=ck.readlines()
+		for i in ck[1:]:
+			z=i.replace('\r\n','').replace('\n','').split(',')
+			dict_id_row[z[1]]=[rowNumber]
+			rowNumber+=1
+			dict_id_propertyValues[z[1]]=(z[6],z[7])
+			dict_id_coordinates[z[1]]=(z[-1],z[-2])
+		base='http://data.fcc.gov/api/block/2010/find'
+		ak= open('Zip_Year_Tract_'+anyName+filename,'w')
+		ak.write('Tract,Zip,Year,saPropertyId,Val_ass,Val_market\n')
+		c=1
+		#for i in sorted(dict_id_coordinates.keys()):
+		for i in dict_id_coordinates:
+			if c>starting:
+				zipp=ck[dict_id_row[i][0]].split(',')[4]#zip
+				yearr=ck[dict_id_row[i][0]].split(',')[5]#year
+				#Getting tract information for each housing unit
+				option={'latitude': float(dict_id_coordinates[i][0]),'longitude':float(dict_id_coordinates[i][1])}
+				tractt=re.search(r'<Block FIPS="([0-9]{11})',requests.get(url=base, params=option).text).group(1)
+				val1=dict_id_propertyValues[i][0]
+				val2=dict_id_propertyValues[i][1]		
+				ak.write("{},{},{},{},{},{}\n".format(tractt,zipp,yearr,i,val1,val2))
+				print c,len(ck)
+			c+=1
+		ak.close()
+	return 'Done'
+
+def mergingCensusTractFiles(k,fileName):
+	#k is an integer, either 0 or 1 due to having 'DS_...' file
+	#fileName is a string ex) 'homeValues.txt'
+ 	initialOne = pd.read_csv('Mar/pct/'+os.listdir('Mar/pct')[k])
+	#print initialOne.columns.to_series().groupby(initialOne.dtypes).groups
+	for i in os.listdir('Mar/pct')[k+1:]:
+		each=pd.read_csv('Mar/pct/'+i)
+		initialOne = initialOne.append(pd.DataFrame(data = each), ignore_index=True)
+	initialOne = initialOne[initialOne.Zip != 0.0]
+	colls=['Zip','Year','saPropertyId','Val_ass','Val_market']
+
+	initialOne[colls]=initialOne[colls].applymap(np.int64)
+	initialOne.to_csv('Mar/pct/'+fileName,index=False)
+	return 'Done'
+
+def usingInflationAPI(fileName,whereToSave):
+	#fileName is a string ex) 'homeValues.txt'
+	#whereToSave is a string ex) 'Mar/NE_PropertyValues.txt'
+
+	# Create a new Inflation instance
+	inflation = Inflation()
+	infla={}
+	# How many US $ would I need in 2015 to pay for what cost $1 in eachYear
+	for i in range(11):
+		eachYear=i+2004
+		infla[eachYear]=inflation.inflate(1, datetime.date(2015,1,1), datetime.date(eachYear,1,1), 'United States')
+	print infla
+	dfp=pd.read_csv('Mar/pct/'+fileName)
+
+	dfp=dfp.sort(['Zip','Tract','Year'])
+	dfp=dfp.reset_index(drop=True)
+	dfp=dfp.rename(columns = {'Tract':'GEOID10','Val_ass':'VAL_ASS','Val_market':'VAL_MARKET','saPropertyId':'PROPERTY_ID','Zip':'ZIP','Year':'YEAR'})
+
+	dfp['VAL_ASS_15']=0.0
+	dfp['VAL_MARKET_15']=0.0
+
+	for i in infla:	
+		print i
+		dfp.ix[dfp['YEAR']==i,'VAL_ASS_15'] = dfp.ix[dfp['YEAR']==i,'VAL_ASS'] * infla[i]
+		dfp.ix[dfp['YEAR']==i,'VAL_MARKET_15'] = dfp.ix[dfp['YEAR']==i,'VAL_MARKET'] * infla[i]
+
+	dfp = dfp[dfp['GEOID10'].astype(str).str.startswith('26')]
+	dfp['GEOID10']=dfp['GEOID10'].astype(int)
+	dfp.to_csv(whereToSave,index=False)
+	return 'Done'
 
 
 
@@ -745,6 +831,8 @@ from inflation_calc.inflation import Inflation
 # ###########################################################################################################
 
 # #Creating all property values around 10 counties 
+
+#-----------------------Ignore this part-----------------------------------------------
 # ta=pd.read_csv('JanFeb/UMichTaxAssessor_Total.csv')
 
 # print len(ta.index)
@@ -767,55 +855,54 @@ from inflation_calc.inflation import Inflation
 # print 'SA_YR_APN_ADDED'
 # print ta.SA_YR_APN_ADDED.unique()
 
-rdd=pd.read_csv('JanFeb/UMichRecorder_Total.csv')
+# rdd=pd.read_csv('JanFeb/UMichRecorder_Total.csv')
 
-#Example
-#s = pd.Series([0,1,2])
-#for i in s: 
-#    print (i)
-#0
-#1
-#2
-#type(rdd.SR_DATE_TRANSFER) -- series
-sdict={}
-for i in rdd.SR_DATE_TRANSFER:
-	kk = str(i)
-	if kk[:4] not in sdict:
-		sdict[kk[:4]]=1
-print sdict.keys()
-sdict={}
-for i in rdd.SR_DATE_FILING:
-	kk = str(i)
-	if kk[:4] not in sdict:
-		sdict[kk[:4]]=1
-print sdict.keys()
+# #Example
+# #s = pd.Series([0,1,2])
+# #for i in s: 
+# #    print (i)
+# #0
+# #1
+# #2
+# #type(rdd.SR_DATE_TRANSFER) -- series
+# sdict={}
+# for i in rdd.SR_DATE_TRANSFER:
+# 	kk = str(i)
+# 	if kk[:4] not in sdict:
+# 		sdict[kk[:4]]=1
+# print sdict.keys()
+# sdict={}
+# for i in rdd.SR_DATE_FILING:
+# 	kk = str(i)
+# 	if kk[:4] not in sdict:
+# 		sdict[kk[:4]]=1
+# print sdict.keys()
+
+#----------------------------------------------------------------------
 
 
+
+########## FIRST until line 947     AFter line 947, the code is same, but doing rest 1M data
+
+# ta=pd.read_csv('JanFeb/UMichTaxAssessor_Total.csv')
 # #SA_PROPERTY_ID, SR_UNIQUE_ID,SA_SITE_CITY,SA_SITE_STATE,SA_SITE_ZIP,TAXYEAR,SA_VAL_ASSD, SA_VAL_MARKET
 # ta = ta[['SR_UNIQUE_ID','SA_PROPERTY_ID','SA_SITE_CITY','SA_SITE_STATE','SA_SITE_ZIP','TAXYEAR','SA_VAL_ASSD','SA_VAL_MARKET']]
 # ta = ta[ta.SR_UNIQUE_ID != 0]
 # ta = ta[ta.SR_UNIQUE_ID.notnull()]
-# #Instead of doing TAXYEAR , SA_VAL_ASSD , and SA_VAL_MARKET, just doing SA_VAL_ASSD once
+# #Instead of checking TAXYEAR, SA_VAL_ASSD, and SA_VAL_MARKET, just checking SA_VAL_ASSD once
 # ta = ta[ta.SA_VAL_ASSD.notnull()]
 
 # rr=pd.read_csv('JanFeb/UmichRecorder_Total.csv')
-# #SR_UNIQUE_ID,SR_PROPERTY_ID, SR_SITE_ADDR_RAW
+#SR_UNIQUE_ID,SR_PROPERTY_ID, SR_SITE_ADDR_RAW
 # rr = rr[['SR_UNIQUE_ID','SR_PROPERTY_ID','SR_SITE_ADDR_RAW']]
 # rr = rr[rr.SR_UNIQUE_ID != 0]
 # rr = rr[rr.SR_UNIQUE_ID.notnull()]
+# #print len(rr.index)#7056997
 # rr = rr[rr.SR_SITE_ADDR_RAW.notnull()]
 
 # merged=pd.merge(ta, rr , on=['SR_UNIQUE_ID'],  how="outer")
-# merged.to_csv('Mar/property_FILTERED.txt', encoding='utf-8',index=False)
-
-# # #merged=pd.merge(ta, rr , on=['SR_UNIQUE_ID','SA_PROPERTY_ID'],  how="outer")
-# # #merged.to_csv('Mar/property_FILTERED_VER2.txt', encoding='utf-8',index=False)
-
-
-
-
+# #print len(merged.index)#6248546
 # #removing some rows once more 
-# rr=pd.read_csv('Mar/property_FILTERED.txt')
 # print len(rr.index)
 # rr = rr[rr.SA_VAL_ASSD.notnull()]
 # rr = rr[rr.SA_VAL_ASSD!=0]
@@ -855,26 +942,108 @@ print sdict.keys()
 # 	dict_id_row[z[1]]=[rowNumber]
 # 	rowNumber+=1
 # 	dict_id_propertyValues[z[1]]=(z[6],z[7])
+# #takes 10 hours for each file. 
+#gettingCensusTract('Mar/subfiles',[1:10],starting=0,anyAdditionalName='')
 
-# print os.listdir('Mar/subfiles')[9:10]
-# for filename in os.listdir('Mar/subfiles')[9:10]:
+# ################ Merging subfiles into one and deleting rows that are out of zipcode
+# #Step1
+# mergingCensusTractFiles(1,'homeValues.txt')
+
+# #Step2
+# usingInflationAPI('homeValues.txt','Mar/NE_PropertyValues.txt')
+
+# #Step3
+# dfp=pd.read_csv('Mar/NE_PropertyValues.txt')
+# del dfp['PROPERTY_ID']
+# del dfp['ZIP']
+# dfp=dfp.groupby(['GEOID10','YEAR']).mean().reset_index()
+
+# dfp.to_csv('Mar/NE_PropertyValues_mean.txt',index=False)
+
+########## SECOND
+
+ta=pd.read_csv('JanFeb/UMichTaxAssessor_Total.csv')
+#SA_PROPERTY_ID, SR_UNIQUE_ID,SA_SITE_CITY,SA_SITE_STATE,SA_SITE_ZIP,TAXYEAR,SA_VAL_ASSD, SA_VAL_MARKET
+ta = ta[['SR_UNIQUE_ID','SA_PROPERTY_ID','SA_SITE_CITY','SA_SITE_STATE','SA_SITE_ZIP','TAXYEAR','SA_VAL_ASSD','SA_VAL_MARKET']]
+ta = ta.drop_duplicates(subset='SA_PROPERTY_ID', keep='first')
+ta['key1'] = 1
+
+dk=pd.read_csv('Mar/property_Complete.txt')
+dk=dk[['SA_PROPERTY_ID']]
+
+dk['key2'] = 1
+print 'original length'
+print len(ta.index)
+df_1 = pd.merge(ta, dk, on=['SA_PROPERTY_ID'], how = 'left')
+
+df_1 = df_1[~(df_1.key2 == df_1.key1)]
+df_1 = df_1.drop(['key1','key2'], axis=1)
+
+# df_1 = df_1.drop(['key1','key2','SA_PROPERTY_ID_y', 'SA_SITE_CITY_y', 'SA_SITE_STATE_y', 'SA_SITE_ZIP_y', 'TAXYEAR_y', 'SA_VAL_ASSD_y', 'SA_VAL_MARKET_y'], axis=1)
+# df_1 = df_1.rename(columns={'SA_PROPERTY_ID_x': 'SA_PROPERTY_ID', 'SA_SITE_CITY_x': 'SA_SITE_CITY','SA_SITE_STATE_x':'SA_SITE_STATE','SA_SITE_ZIP_x':'SA_SITE_ZIP','TAXYEAR_x':'TAXYEAR','SA_VAL_ASSD_x':'SA_VAL_ASSD','SA_VAL_MARKET_x':'SA_VAL_MARKET'})
+print len(dk.index)
+print list(df_1)
+print len(df_1.index)
+rr=pd.read_csv('JanFeb/UmichRecorder_Total.csv')
+rr = rr[['SR_UNIQUE_ID','SR_PROPERTY_ID','SR_SITE_ADDR_RAW']]
+print 'rr length'
+print len(rr.index)
+rr = rr.drop_duplicates(subset='SR_PROPERTY_ID', keep='first')
+print len(rr.index)
+merged1 = pd.merge(df_1, rr , left_on='SA_PROPERTY_ID', right_on='SR_PROPERTY_ID', how="left")
+#PROPERTY_ID's are all unique
+
+merged1 = merged1[merged1.SR_SITE_ADDR_RAW.notnull()]
+merged1 = merged1[merged1.SR_SITE_ADDR_RAW != 0]
+merged1 = merged1[merged1.SA_VAL_ASSD.notnull()]
+merged1 = merged1[merged1.SA_VAL_ASSD!=0]
+print len(merged1.index)
+print list(merged1)
+merged1.to_csv('Mar/property_Complete_Rest.txt', encoding='utf-8',index=False)
+
+##############This is to make sub csv files due to large amount
+# #total of 559,000 properties
+# sfc=pd.read_csv('Mar/propertyGeocoded_Rest.txt')
+# thisChunk=len(sfc.index)/6
+# strt=len(sfc.index)/6
+# init=0
+# leftOver=len(sfc.index)%6
+# for i in range(6):
+# 	if i==5:
+# 		sfc[init:thisChunk+leftOver+1].to_csv('Mar/subfiles/propertyGeocoded'+str(i)+'.txt', encoding='utf-8',index=False)
+# 	else:
+# 		sfc[init:thisChunk].to_csv('Mar/subfiles/propertyGeocoded'+str(i)+'.txt', encoding='utf-8',index=False)
+# 		init=thisChunk
+# 		thisChunk+=strt
+
+#steps for GEOCODING
+# ###############Getting Census Tract using API
+# #Id-row-number
+# print os.listdir('Mar/subfiles')[6:7]
+# for filename in os.listdir('Mar/subfiles')[6:7]:
 # 	print filename
 # 	print datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 # 	dict_id_coordinates={}
+# 	dict_id_row={}
+# 	rowNumber=1
+# 	dict_id_propertyValues={}
 # 	with open('Mar/subfiles/'+filename,'r') as ck:
 # 		ck=ck.readlines()
 # 	for i in ck[1:]:
 # 		z=i.replace('\r\n','').replace('\n','').split(',')
-# 		dict_id_coordinates[z[4]]=(z[2],z[1])
+# 		dict_id_row[z[1]]=[rowNumber]
+# 		rowNumber+=1
+# 		dict_id_propertyValues[z[1]]=(z[6],z[7])
+# 		dict_id_coordinates[z[1]]=(z[-1],z[-2])
 # 	base='http://data.fcc.gov/api/block/2010/find'
-# 	ak= open('Zip_Year_Tract_103303'+filename,'w')
+# 	ak= open('REST_Zip_Year_Tract_RRR23900'+filename,'w')
 # 	ak.write('Tract,Zip,Year,saPropertyId,Val_ass,Val_market\n')
 # 	c=1
 # 	#for i in sorted(dict_id_coordinates.keys()):
 # 	for i in dict_id_coordinates:
-# 		if c>103303:
-# 			zipp=fc1[dict_id_row[i][0]].split(',')[4]#zip
-# 			yearr=fc1[dict_id_row[i][0]].split(',')[5]#year
+# 		if c>23900:
+# 			zipp=ck[dict_id_row[i][0]].split(',')[4]#zip
+# 			yearr=ck[dict_id_row[i][0]].split(',')[5]#year
 # 			#Getting tract information for each housing unit
 # 			option={'latitude': float(dict_id_coordinates[i][0]),'longitude':float(dict_id_coordinates[i][1])}
 # 			tractt=re.search(r'<Block FIPS="([0-9]{11})',requests.get(url=base, params=option).text).group(1)
@@ -886,17 +1055,21 @@ print sdict.keys()
 # 	ak.close()
 
 # ################ Merging subfiles into one and deleting rows that are out of zipcode
+
 # #Step1
-# initialOne = pd.read_csv('Mar/pct/'+os.listdir('Mar/pct')[1])
+# initialOne = pd.read_csv('Mar/pct2/'+os.listdir('Mar/pct2')[0])
 # #print initialOne.columns.to_series().groupby(initialOne.dtypes).groups
-# for i in os.listdir('Mar/pct')[2:]:
-# 	each=pd.read_csv('Mar/pct/'+i)
+
+# for i in os.listdir('Mar/pct2')[1:]:
+# 	each=pd.read_csv('Mar/pct2/'+i)
 # 	initialOne = initialOne.append(pd.DataFrame(data = each), ignore_index=True)
 # initialOne = initialOne[initialOne.Zip != 0.0]
 # colls=['Zip','Year','saPropertyId','Val_ass','Val_market']
 
 # initialOne[colls]=initialOne[colls].applymap(np.int64)
-# initialOne.to_csv('Mar/pct/homeValues.txt',index=False)
+# initialOne.to_csv('Mar/pct2/homeValues2.txt',index=False)
+
+
 
 # #Step2
 # # Create a new Inflation instance
@@ -908,7 +1081,7 @@ print sdict.keys()
 # 	infla[eachYear]=inflation.inflate(1, datetime.date(2015,1,1), datetime.date(eachYear,1,1), 'United States')
 # print infla
 
-# dfp=pd.read_csv('Mar/pct/homeValues.txt')
+# dfp=pd.read_csv('Mar/pct2/homeValues2.txt')
 
 # dfp=dfp.sort(['Zip','Tract','Year'])
 # dfp=dfp.reset_index(drop=True)
@@ -924,57 +1097,143 @@ print sdict.keys()
 
 # dfp = dfp[dfp['GEOID10'].astype(str).str.startswith('26')]
 # dfp['GEOID10']=dfp['GEOID10'].astype(int)
-# dfp.to_csv('Mar/NE_PropertyValues.txt',index=False)
+# dfp.to_csv('Mar/NE_PropertyValues2.txt',index=False)
+
+
+
+# ##########################actually you have to do this first 
+# ########MERGING ALL GEOCODED CENSUS TRACT ID
+
+# #Merging two files 
+# initialOne = pd.read_csv('Mar/NE_PropertyValues.txt')
+# #print initialOne.columns.to_series().groupby(initialOne.dtypes).groups
+
+# each=pd.read_csv('Mar/NE_PropertyValues2.txt')
+
+# initialOne = initialOne.append(pd.DataFrame(data = each), ignore_index=True)
+
+# initialOne.to_csv('Mar/NE_PropertyValues_Final.txt',index=False)
+
+
+
 
 # # #Step3
-# dfp=pd.read_csv('Mar/NE_PropertyValues.txt')
+# dfp=pd.read_csv('Mar/NE_PropertyValues2.txt')
 # del dfp['PROPERTY_ID']
 # del dfp['ZIP']
 # dfp=dfp.groupby(['GEOID10','YEAR']).mean().reset_index()
 
-# dfp.to_csv('Mar/NE_PropertyValues_mean.txt',index=False)
+# dfp.to_csv('Mar/NE_PropertyValues_mean2.txt',index=False)
+
+
+
+# #Merging two files 
+# initialOne = pd.read_csv('Mar/NE_PropertyValues_mean.txt')
+# #print initialOne.columns.to_series().groupby(initialOne.dtypes).groups
+
+# each=pd.read_csv('Mar/NE_PropertyValues_mean2.txt')
+# initialOne = initialOne.append(pd.DataFrame(data = each), ignore_index=True)
+
+# initialOne.to_csv('Mar/NE_PropertyValues_mean_Final.txt',index=False)
 
 # ################# Merging NE datasets
-# dfp=pd.read_csv('Mar/NE_PropertyValues_mean.txt')
+# #doing the rest of the data
+# dd={'idd':['a','b','c','d','e'],'kk':[1,2,3,4,5]}
+# kk={'idd':['a','x','y','z',],'kk':[1,2,3,4]}
+# dd=pd.DataFrame(dd)
+# kk=pd.DataFrame(kk)
+# print dd
+# print kk
+# dd['key1']=1
+# kk['key2']=1
+# cc = pd.merge(dd, kk , on=['idd'], how="left")
+# print cc
+# print cc[~(cc.key1==cc.key2)]
+
+# #final version of data 
+# dfp=pd.read_csv('Mar/NE_PropertyValues_mean_Final.txt')
 # dfp2=pd.read_csv('Mar/NE_ForeclosureRates.csv')
+# dfp['key1']=1
+# dfp['key2']=1
+
 # dff=pd.merge(dfp2, dfp, on = ['GEOID10','YEAR'],  how='outer')
-# dff.to_csv('Apr/NE_data.csv',encoding='utf-8',index=False)
+# dff=dff[dff.key1==dff.key2]
+# del dff['key1']
+# del dff['key2']
+# dff.to_csv('Apr/NE_data22.csv',encoding='utf-8',index=False)
 
 
 
 
 
 
-######### Checking
-# ta=pd.read_csv('JanFeb/UMichTaxAssessor_Total.csv')
-# print "Total rows from UMichTaxAssessor_Total.csv"
-# print len(ta.index)
-# print "Unique tax years from UMichTaxAssessor_Total.csv"
-# print ta.TAXYEAR.unique()
 
-# rr=pd.read_csv('Mar/property_FILTERED.txt')
-# print "Total rows from property_FILTERED.txt"
-# print len(rr.index)
-# print "Unique tax years from property_FILTERED.txt"
-# print rr.TAXYEAR.unique()
 
-# rr=pd.read_csv('Mar/property_Complete.txt')
-# print "Total rows from property_Complete.txt"
-# print len(rr.index)
-# print "Unique tax years from property_Complete.txt"
-# print rr.TAXYEAR.unique()
+# ##########################
+# ########macthing all the sales transactions property ID to Census tract
 
-# rr=pd.read_csv('Mar/NE_PropertyValues.txt')
-# print "Total rows from NE_PropertyValues.txt"
-# print len(rr.index)
-# print "Unique YEARs from NE_PropertyValues.txt"
-# print rr.YEAR.unique()
+################# Merging NE datasets
+#doing the rest of the data
+# dd={'idd_a':['a','b','c','d','e','a','b','c'],'kk':[99,99,99,99,99,99,99,99]}
+# kk={'idd_b':['a','b','c','y','z'],'kk':[88,88,88,88,88]}
+# kk={'idd_b':['a','b','c','y','z','a'],'kk':[88,88,88,88,88,88]}
+# dd=pd.DataFrame(dd)
+# kk=pd.DataFrame(kk)
+# print dd
+# print kk
+# dd['key1']=1
+# kk['key2']=1
+# cc = pd.merge(dd, kk , left_on='idd_a',right_on='idd_b', how="left")
+# print cc
 
-# rr=pd.read_csv('Mar/NE_PropertyValues_mean.txt')
-# print "Total rows from NE_PropertyValues_mean.txt"
-# print len(rr.index)
-# print "Unique YEARs from NE_PropertyValues_mean.txt"
-# print rr.YEAR.unique()
+# cc = pd.merge(dd, kk , left_on='idd_a',right_on='idd_b', how="outer")
+# print cc
+
+# #Merging two files 
+
+rr=pd.read_csv('JanFeb/UmichRecorder_Total.csv')
+rr = rr[['SR_UNIQUE_ID','SR_PROPERTY_ID','SR_DATE_TRANSFER','SR_DATE_FILING','MM_FIPS_COUNTY_NAME']]
+rr['SR_DATE_TRANSFER'] = rr['SR_DATE_TRANSFER'].map(lambda x: int(str(x)[:4]))
+rr['SR_DATE_FILING'] = rr['SR_DATE_FILING'].map(lambda x: int(str(x)[:4]))
+rr['que'] = np.where((rr['SR_DATE_TRANSFER'] == rr['SR_DATE_FILING']), 1, np.nan)
+print 'rr length'
+print len(rr.index)
+kk = pd.read_csv('Mar/NE_PropertyValues_Final.txt')
+kk = kk[['GEOID10','PROPERTY_ID','ZIP']]
+kk = kk.drop_duplicates(subset='PROPERTY_ID', keep='first')#we assessed different years so we have some duplicates
+
+rr['key1']=1
+kk['key2']=1
+merged1 = pd.merge(rr, kk , left_on='SR_PROPERTY_ID', right_on='PROPERTY_ID', how="left")
+print len(merged1[merged1.key1==merged1.key2].index)
+print len(merged1[~(merged1.key1==merged1.key2)].index)
+
+mm=merged1[~(merged1.key1==merged1.key2)]
+del mm['key1']
+del mm['key2']
+
+# del merged1['key1']
+# del merged1['key2']
+# #PROPERTY_ID's are all unique
+# #merged1  --> columns would be : GEOID , 'SR_DATE_TRANSFER', 'SR_DATE_FLIING'
+# #after merging 
+# rr=pd.read_csv('Mar/ppp.txt')
+# #changing yy/mm/dd to yy values
+# print rr
+# print rr[rr.que!=1]
+# print rr.groupby('SR_PROPERTY_ID')['SR_DATE_TRANSFER'].nunique()
+# print rr.groupby(['GEOID','YYYY']).count()
+# zzz= rr.groupby(['GEOID','YYYY']).count().reset_index()
+# print zzz
+# zzz.to_csv('Mar/zzz.txt', encoding='utf-8',sep='\t',header=True,index=False)
+
+
+
+
+
+
+
+
 
 
 
